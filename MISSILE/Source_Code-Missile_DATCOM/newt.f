@@ -1,0 +1,110 @@
+      SUBROUTINE NEWT(CPV,R,NN1,NFL,NNI,VOVS,AL,XM,XINT,RR,
+     1  RREF,CABL,CNBL,CMBL)
+C
+C  ROUTINE ADAPTED FROM NSWC AEROPREDICTION CODE
+C  ORIGINAL ROUTINE WRITTEN BY F. MOORE, NSWC
+C  MODIFIED BY J. JENKINS, WL/FIGC
+C
+      COMMON /CONST/ PI,RAD,UNUSED,KAND
+      COMMON /VDARY/ XB(220),RB(220),RBP(220),C(220),C1(220),RB1(220),
+     1  RBP1(220),B(220),PSI(220),ZE0X(220),PSIR(220),PHIX(220)
+      DIMENSION R(50)
+      DIMENSION CPV(220,7)
+      DIMENSION PH(7),CPP(7)
+C
+      PLPI=(1.2*VOVS**2)**3.5*(6./(7.*VOVS**2-1.))**2.5
+      IF(NFL.EQ.1) GO TO 1000
+      CP0= (0.906*PLPI-1.)/(0.7*VOVS**2)
+      CA=CP0*(R(1)/RREF)**2
+      CN=0.
+      CM=0.
+      CABL=CA
+      CNBL=0.
+      CMBL=0.
+      XCP=0.
+      CL=-CA*SIN(AL)
+      CD=CA*COS(AL)
+      IF(NFL.EQ.2) GO TO 1100
+      NNI=2
+      GO TO 1110
+ 1000 CP0=(PLPI-1.)/(0.7*VOVS**2)
+      CS=COS(AL)
+      SS=SIN(AL)
+      PH(1)=0.
+      IF(AL.GT.0.0001) GO TO 1010
+      NM=1
+      GO TO 1030
+ 1010 DO 1020 I=2,7
+      PH(I)=PH(I-1)+30./RAD
+ 1020 CONTINUE
+      NM=7
+ 1030 CONTINUE
+      X1=0.
+      DX=(RR+XM)/6.
+      DO 1050 I=1,7
+      X2=X1-RR
+      R2=SQRT(RR**2-X2**2)
+      DO 1040 L=1,NM
+      A=(1.-X1/RR)**2
+      CP=CP0*(A*CS**2+(X1/RR-1.)*SQRT(1.-A)*COS(PH(L))*SIN(2.*AL)
+     1+(1.-A)*COS(PH(L))**2*SS**2)
+      CPP(L)=CP
+ 1040 CONTINUE
+      X1=X1+DX
+ 1050 CONTINUE
+      D=CP-CPV(2,7)
+      D2=D
+      DO 1080 I=3,NN1
+      X2=XB(I)
+      IF(X2.GE.XINT) GO TO 1090
+      X1=RR+X2
+      IF(X1.GE.RR) X1=RR
+      IF(X1.GE.RR) X2=RR
+      R2=SQRT(RR**2-X2**2)
+      DO 1060 L=1,NM
+      A=(1.-X1/RR)**2
+      CP=CP0*(A*CS**2+(X1/RR-1.)*SQRT(1.-A)*COS(PH(L))*SIN(2.*AL)
+     1+(1.-A)*COS(PH(L))**2*SS**2)
+      IF(I.LT.NN1) GO TO 1060
+      CPP(L)=CP
+ 1060 CONTINUE
+      IF(D.GT.0.) GO TO 1070
+      D1=D2
+      D2=CP-CPV(I,7)
+      IF(D2.LE.0.) GO TO 1080
+      SLOPE=(D2-D1)/(XB(I)-XB(I-1))
+      XNV= XB(I-1)-D1/SLOPE
+      NNI=I
+      GO TO 1090
+ 1070 D1=D2
+      D2=CP-CPV(I,7)
+      IF(D2.GE.0.)GO TO 1080
+      SLOPE=(D2-D1)/(XB(I)-XB(I-1))
+      XNV=XB(I-1)-D1/SLOPE
+      NNI=I
+      GO TO 1090
+ 1080 CONTINUE
+ 1090 IF(I.GE.NN1) XNV=XINT
+      NNI=I
+      IF(X2.GE.XINT) XNV=XINT
+      IF(I.GE.NN1) NNI=I-1
+      YNV=SQRT(RR**2-XNV**2)
+      TH2=ATAN(-YNV/XNV)
+      SH=SIN(TH2)
+      CH=COS(TH2)
+      RA=(RR/RREF)**2
+      CA=CP0/2.*RA*(CS**2*(1.-CH**4)+.5*SS**2*SH**4)
+      CN=CP0*RA*SIN(2.*AL)*SH**4/4.
+      CM=-CP0/2.*RA*SIN(2.*AL)*(SH**4/4.+SH**2*CH**3/5.+2./15.*(CH**3
+     1-1.))
+      CABL=CA
+      CNBL=CN
+      CMBL=CM
+      CL=CN*CS-CA*SS
+      CD=CA*CS+CN*SS
+      XCP=-CM/CN
+ 1100 CONTINUE
+ 1110 CONTINUE
+C
+      RETURN
+      END

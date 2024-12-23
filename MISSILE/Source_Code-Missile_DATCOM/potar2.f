@@ -1,0 +1,115 @@
+      SUBROUTINE POTAR2(ALP,BET,CNPP,CYPP,CMPP,CLNPP)
+C***********************************************************************
+C
+C     THIS SUBROUTINE TRANSFERS ALPHA AND BETA IN BODY COORDINATES
+C     INTO INLET ALPHA AND BETA FOR A SIDE MOUNTED 2-D INLET.  IT
+C     THEN USES THESE LOCAL ANGLES TO CALCULATE INLET AERODYNAMICS.
+C     THE FORCES AND MOMENTS IN INLET COORDINATES ARE THEN TRANS-
+C     FERRED BACK TO THE BODY COORDINATE SYSTEM.
+C
+C***********************************************************************
+C
+C  WRITTEN BY M. MOORE, MCDONNELL DOUGLAS
+C
+      COMMON /INLETN/ NIN,INTYPE,XINLT,XDIV,HDIV,LDIV,PHI(20),
+     1                XI(5),HI(5),WI(5),ICOVER,RAMANG,IAD,MFR(20)
+      COMMON /ILTGEO/ LENGTH(5),LLNGTH(5),ALPEFF(5),SI(5),
+     1                CRXLEN(5),DEQI(5),XMIDI(5),XMIDD(3),
+     2                XD(3),HD(3),WD(3),DEQD(3),
+     3                RARC(5),DLEN(3),KWA(20),KWB(20),
+     4                RA2(20),RB2(20),AREAI(5),AREAD(3)
+      COMMON /FLC/    NALPHA,ALPHA(20),BETA,PHIROL,NMACH,MACH(20),
+     1                ALT(20),REN(20),FLDUM(60)
+      COMMON /REFQN/  SREF,LREF,BREF,ROUGH,XCG,ZCG,SCALE,BLAYER,RHR
+      COMMON /CONST/  PI,RAD,UNUSED,KAND
+      COMMON /POTENT/ CNP(20),CYP(20),CMP(20),CLNP(20)
+      COMMON / MOMEN/ CNMOM(20),CYMOM(20)
+      COMMON /LINEAR/ ARA,ARB,CNLIN(20),CMLIN(20),
+     1                CYLIN(20),CLNLIN(20)
+      COMMON /CFFLOW/ CNCF(20),CYCF(20),
+     1                CMCF(20),CLNCF(20)
+      COMMON /ILTVSC/ THETAI(5,20),PHIR(20),CRXIWD(5,20),
+     1                CRXIHT(5,20),CNNIZP(5,20),
+     2                CNNIZN(5,20),CNNIYP(5,20),
+     3                CNNIYN(5,20),PANILN(5,5,20),
+     4                CNCIRN,FRI,RARX(3),
+     5                DLCNAP(3,20),DLCNAN(3,20),
+     6                DLCYAP(3,20),DLCYAN(3,20)
+      COMMON /DIVVSC/ THETAD(5,20),CRXDWD(3,20),
+     1                CRXDHT(3,20),CNNDZP(3,20),
+     2                CNNDZN(3,20),CNNDYP(3,20),
+     3                CNNDYN(3,20),PANDLN(5,20),FRD
+      COMMON /BODVSC/ DLCNBP(5,20),DLCNBN(5,20),
+     1                DLCYBP(5,20),DLCYBN(5,20),FRB
+C
+      REAL NIN,INTYPE,LENGTH,LLNGTH,LREF,LDIV,MACH,KWA,KWB
+      REAL NALPHA,NMACH
+      LOGICAL ICOVER
+C
+      DIMENSION DCN(20),DCY(20),DCM(20),DCLN(20),CNI(20),CYI(20)
+      DIMENSION CNIXCP(20),CYIXCP(20),CYD(20),CYDXCP(20)
+      DIMENSION ALPI(20),BETAI(20),BETAD(20)
+C
+      NUMI=NIN+0.5
+      DO 10 I=1,NUMI
+        IF (PHI(I).GE.360.) PHI(I)=PHI(I)-360.0
+        IF((PHI(I).GE.0.0).AND.(PHI(I).LT.180.0))THEN
+          ALPI(I)=ALP*SIN(PHI(I)/RAD)+BET*COS(PHI(I)/RAD)
+          BETAI(I)=-ALP*COS(PHI(I)/RAD)+BET*SIN(PHI(I)/RAD)
+        ELSE
+          ALPI(I)=-ALP*SIN(PHI(I)/RAD)-BET*COS(PHI(I)/RAD)
+          BETAI(I)=ALP*COS(PHI(I)/RAD)-BET*SIN(PHI(I)/RAD)
+        ENDIF
+        BETAD(I)=-ALP*SIN(PHI(I)/RAD)-BET*COS(PHI(I)/RAD)
+  10  CONTINUE
+C
+      CALL CNPTWO(ALPI,CNI,CNIXCP)
+      CALL CYPTWO(BETAI,CYI,CYIXCP)
+      IF(HDIV .GT. 0.0)THEN
+        CALL CYPDIV(BETAD,CYD,CYDXCP)
+      ELSE
+         DO 15 I=1,20
+           CYD(I) = 0.0
+           CYDXCP(I) = 0.0
+   15    CONTINUE
+      ENDIF
+C
+      DO 20 I=1,NUMI
+        IF((PHI(I).GE.0.0).AND.(PHI(I).LT.180.0))THEN
+          DCN(I) =CNI(I)*SIN(PHI(I)/RAD)+CYI(I)*COS(PHI(I)/RAD)+
+     &            CYD(I)*SIN(PHI(I)/RAD)
+          DCY(I) =-CNI(I)*COS(PHI(I)/RAD)+CYI(I)*SIN(PHI(I)/RAD)-
+     &             CYD(I)*COS(PHI(I)/RAD)
+          DCM(I) =-CNI(I)*SIN(PHI(I)/RAD)*CNIXCP(I)/LREF
+     &            -CYI(I)*COS(PHI(I)/RAD)*CYIXCP(I)/LREF
+     &            -CYD(I)*SIN(PHI(I)/RAD)*CYDXCP(I)/LREF
+          DCLN(I)= CNI(I)*COS(PHI(I)/RAD)*CNIXCP(I)/BREF
+     &            -CYI(I)*SIN(PHI(I)/RAD)*CYIXCP(I)/BREF
+     &            +CYD(I)*COS(PHI(I)/RAD)*CYDXCP(I)/BREF
+        ELSE
+          DCN(I) =-CNI(I)*SIN(PHI(I)/RAD)-CYI(I)*COS(PHI(I)/RAD)+
+     &            CYD(I)*SIN(PHI(I)/RAD)
+          DCY(I) =CNI(I)*COS(PHI(I)/RAD)-CYI(I)*SIN(PHI(I)/RAD)-
+     &             CYD(I)*COS(PHI(I)/RAD)
+          DCM(I) =CNI(I)*SIN(PHI(I)/RAD)*CNIXCP(I)/LREF
+     &            +CYI(I)*COS(PHI(I)/RAD)*CYIXCP(I)/LREF
+     &            -CYD(I)*SIN(PHI(I)/RAD)*CYDXCP(I)/LREF
+          DCLN(I)=-CNI(I)*COS(PHI(I)/RAD)*CNIXCP(I)/BREF
+     &            +CYI(I)*SIN(PHI(I)/RAD)*CYIXCP(I)/BREF
+     &            +CYD(I)*COS(PHI(I)/RAD)*CYDXCP(I)/BREF
+        ENDIF
+  20  CONTINUE
+C
+      CNPP=0.0
+      CYPP=0.0
+      CMPP=0.0
+      CLNPP=0.0
+      DO 30 I=1,NUMI
+        CNPP=CNPP+DCN(I)*KWA(I)
+        CYPP=CYPP+DCY(I)*KWB(I)
+        CMPP=CMPP+DCM(I)*KWA(I)
+        CLNPP=CLNPP+DCLN(I)*KWB(I)
+   30 CONTINUE
+C
+      RETURN
+      END

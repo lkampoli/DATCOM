@@ -1,0 +1,39 @@
+      SUBROUTINE HYBINZ
+C
+C***  ROUTINE TO INITIALIZE THE I.O.M. ARRAYS USED FOR HYBRID THEORY
+C
+      COMMON /VDARY/ XB(220),RB(220),RBP(220),C(220),C1(220),RB1(220),
+     1  RBP1(220),B(220),PSI(220),ZE0X(220),PSIR(220),PHIX(220)
+      COMMON /VANVAR/ PHIR(220),ZE1(220),ZE1X(220),ZE1R(220),
+     1              T(100),AK(100),AE(100),C3
+      COMMON /CONST/ PI,RAD,UNUSED,KAND
+C
+      DO 1000 I=1,220
+         XB(I)=UNUSED
+         RB(I)=UNUSED
+         RBP(I)=UNUSED
+         C(I)=UNUSED
+         C1(I)=UNUSED
+         RB1(I)=UNUSED
+         RBP1(I)=UNUSED
+         B(I)=UNUSED
+         PSI(I)=UNUSED
+         ZE0X(I)=UNUSED
+         PSIR(I)=UNUSED
+         PHIX(I)=UNUSED
+         PHIR(I)=UNUSED
+         ZE1(I)=UNUSED
+         ZE1X(I)=UNUSED
+         ZE1R(I)=UNUSED
+ 1000 CONTINUE
+C
+      DO 1010 I=1,100
+         T(I)=UNUSED
+         AK(I)=UNUSED
+         AE(I)=UNUSED
+ 1010 CONTINUE
+C
+      C3=UNUSED
+C
+      RETURN
+      END

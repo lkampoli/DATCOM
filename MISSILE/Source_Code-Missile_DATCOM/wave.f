@@ -1,0 +1,86 @@
+      SUBROUTINE WAVE(CPV,NN1,NN2,NN3,NN4,NBLUNT,NN,NNI,
+     1 RR,RREF,SUM1,SUM2,SUM3,CABL,CNBL,CMBL,CAW,CNW,CMW)
+C
+C  ROUTINE ADAPTED FROM NSWC AEROPREDICTION CODE
+C  ORIGINAL ROUTINE WRITTEN BY F. MOORE, NSWC
+C  MODIFIED BY J. JENKINS, WL/FIGC
+C
+      COMMON /CONST/ PI,RAD,UNUSED,KAND
+      COMMON /VDARY/ XB(220),RB(220),RBP(220),C(220),C1(220),RB1(220),
+     1  RBP1(220),B(220),PSI(220),ZE0X(220),PSIR(220),PHIX(220)
+      DIMENSION CPV(220,7)
+      CA2=0.
+      CA3=0.
+      CA4=0.
+      CN2=0.
+      CN3=0.
+      CN4=0.
+      CM2=0.
+      CM3=0.
+      CM4=0.
+      SUM1=0.
+      SUM2=0.
+      SUM3=0.
+      AREF=PI*RREF**2
+      IF(NBLUNT .NE. 1) GO TO 1000
+        K=NNI
+        JB=0
+  500   JB=JB+1
+        IF(XB(JB) .LT. 0.) GO TO 500
+        IF(JB .LE. NNI) GO TO 600
+          CALL SIMP(CPV,K,JB,RR,SUM1,SUM2,SUM3)
+          K=JB+1
+  600 K1=NN1
+      K2=NN2
+      K3=NN3
+      K4=NN4
+      GO TO 1010
+ 1000 K=1
+      K1=NN1
+      K2=NN2
+      K3=NN3
+      K4=NN4
+      CABL=0.
+      CNBL=0.
+      CMBL=0.
+ 1010 JA=K
+      JB=K1
+      CALL SIMP(CPV,JA,JB,RR,SUM1,SUM2,SUM3)
+      CA1= 2.*SUM1/AREF
+      CN1=-2.*SUM2/AREF
+      CM1= 2.*SUM3/(AREF*2.*RREF)
+      SUM1=0.
+      SUM2=0.
+      SUM3=0.
+      IF(NN1.EQ.NN ) GO TO 1020
+      JA=K1+1
+      JB=K2
+      CALL SIMP(CPV,JA,JB,RR,SUM1,SUM2,SUM3)
+      CA2= 2.*SUM1/AREF
+      CN2=-2.*SUM2/AREF
+      CM2= 2.*SUM3/(AREF*2.*RREF)
+      SUM1=0.
+      SUM2=0.
+      SUM3=0.
+      IF(NN2.EQ.NN ) GO TO 1020
+      JA=K2+1
+      JB=K3
+      CALL SIMP(CPV,JA,JB,RR,SUM1,SUM2,SUM3)
+      CA3= 2.*SUM1/AREF
+      CN3=-2.*SUM2/AREF
+      CM3= 2.*SUM3/(AREF*2.*RREF)
+      SUM1=0.
+      SUM2=0.
+      SUM3=0.
+      IF(NN3.EQ.NN ) GO TO 1020
+      JA=K3+1
+      JB=K4
+      CALL SIMP(CPV,JA,JB,RR,SUM1,SUM2,SUM3)
+      CA4= 2.*SUM1/AREF
+      CN4=-2.*SUM2/AREF
+      CM4= 2.*SUM3/(AREF*2.*RREF)
+ 1020 CAW= CABL+CA1+CA2+CA3+CA4
+      CNW= CNBL+CN1+CN2+CN3+CN4
+      CMW=CMBL+CM1+CM2+CM3+CM4
+      RETURN
+      END

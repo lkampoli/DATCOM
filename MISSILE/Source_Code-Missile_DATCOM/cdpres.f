@@ -1,0 +1,437 @@
+      SUBROUTINE CDPRES (NX,X,R,SREF,MACH,FRNOSE,
+     1                   VOLNOS,LNOSE,MSUB,CDPO,CDTOT)
+C     ****************************************************************
+C
+C             THIS SUBROUTINE CALCULATES THE WAVE DRAG COEFFICIENT 
+C             OF ARBITRARY AXISYMMETRIC BODIES FOR TRANSONIC AND 
+C             SUPERSONIC FLOW.  SUPERSONICALLY, THE AREA RULE IS 
+C             USED.  IN ORDER TO DETERMINE THE TRANSONIC VALUES,
+C             A CUBIC SPLINE IS FIT TO CONNECT THE SUBSONIC AND 
+C             SUPERSONIC REGIMES.  THE DRAG RISE IS THEN CAPTURED
+C             IN THE TRANSONIC RANGE.
+C
+C     ****************************************************************
+C
+C  MODIFIED BY W. BLAKE, WL/FIGC
+C
+C     THE INPUT DATA REQUIRED CONSISTS OF:
+C         NX     = NUMBER OF STEPS ALONG THE LONGITUDINAL AXIS
+C         X(I)   = LONGITUDINAL STATIONS (DOES NOT HAVE TO
+C                  CORRESPOND TO X=0 AT THE NOSE)
+C	  R(I)   = RADIUS ASSOCIATED WITH EACH X LOCATION
+C	  SREF   = REFERENCE AREA                          
+C	  MACH   = MACH NUMBER AT WHICH THE WAVE DRAG IS TO BE 
+C	            CALCULATED   
+C         FRNOSE = NOSE FINENESS RATIO
+C         VOLNOS = VOLUME OF THE NOSE
+C         LNOSE  = LENGTH OF THE NOSE
+C         MSUB   = MACH NUMBER AT WHICH FLOW IS CONSIDERED SUBSONIC
+C         CDPO   = INCOMPRESSIBLE PRESSURE DRAG AT MSUB
+C                                       
+C     OUTPUT:
+C         CDTOT  = TRANSONIC PRESSURE/WAVE DRAG COEFFICIENT
+C
+      COMMON /CONST/ PI,RAD,UNUSED,KAND
+      DIMENSION R(50),X(50)                               
+      PARAMETER (NMAX=100)
+      DIMENSION XNOSE(NMAX), CRDIUS(NMAX), CAREA(NMAX), 
+     1          XU(NMAX), XL(NMAX), AREA(NMAX), PHI1(NMAX), 
+     2          PHI2(NMAX), C1(NMAX), C2(NMAX), C3(NMAX),
+     3          XPNT(NMAX),RPNT(NMAX)
+      REAL LNOSE, NX, MACH, MA, K1, K2, MSUB, MSUP, K1TRAN, K2TRAN       
+C                                    
+C           FUNCTIONS USED IN CALCULATING THE TERMS OF THE INTEGRAL
+C           FOR THE FOURIER COEFFICIENTS.  A FOURIER SINE SERIES 
+C           EXPRESSION IS USED TO SOLVE THE INTEGRAL FOR THE WAVE DRAG.
+C           THESE FUNCTIONS ARE USED ONLY WHEN THE AREA RULE MUST BE
+C           CALCULATED.
+C
+C     INTEGRAL OF SIN(N*PHI)
+      FIS(N,FEE)=-COS(N*FEE)/N
+C
+C     INTEGRAL OF SIN(N*PHI)*COS(PHI)
+      FISC(N,FEE)=-COS((N-1)*FEE)/(2.*(N-1))-COS((N+1)*FEE)/(2.*(N+1))
+C
+C     INTEGRAL OF SIN(N*PHI)*COS(PHI) FOR N=1
+      FISC1(FEE)=SIN(FEE)**2/2.
+C
+C     INTEGRAL OF SIN(N*PHI)*COS(PHI)**2
+      FISC2(N,FEE)=-1.*((N**2-2.*N)*COS((N+2)*FEE)+(2.*N**2-8.)*
+     1             COS(N*FEE)+(N**2+2.*N)*COS((N-2)*FEE))/
+     2             (4.*N**3-16.*N)
+C
+C     INTEGRAL OF SIN(N*PHI)*COS(PHI)**2 FOR N=1 
+      FISC21(FEE)=-1./3.*COS(FEE)**3
+C
+C     INTEGRAL OF SIN(N*PHI)*COS(PHI)**2 FOR N=2
+      FISC22(FEE)=-1./2.*COS(FEE)**4
+C           
+C     ASSIGN INTEGER VALUE FOR NX
+      INX = NX
+C
+C  INITIALIZE ROUTINE SPECIFIC ARRAYS TO ZERO
+C  REV 1/96 FIX FOR 64 BIT COMPILERS
+C
+      DO 40 I=1,100
+         XNOSE(I)=0.
+         CRDIUS(I)=0.
+         CAREA(I)=0.
+         XU(I)=0.
+         XL(I)=0.
+         AREA(I)=0.
+         PHI1(I)=0.
+         PHI2(I)=0.
+         C1(I)=0.
+         C2(I)=0.
+         C3(I)=0.
+         XPNT(I)=0.
+         RPNT(I)=0.
+  40  CONTINUE
+C
+C     ONLY THE NOSE COORDINATES ARE NEEDED
+      JNX = 0
+      DO 50 I=1,INX
+         JNX = JNX + 1
+         IF (X(I) .EQ. (X(1)+LNOSE)) GOTO 75
+         IF (X(I) .GT. (X(1)+LNOSE+0.00001)) THEN
+            JNX = JNX - 1
+            GOTO 75
+         ENDIF
+   50 CONTINUE
+C
+   75 CONTINUE
+C
+C     TRANSFER X COORDINATES TO CORRESPOND TO X=0 AT THE NOSE
+      DO 100 I=1,JNX
+         XNOSE(I)=ABS(X(I)-X(1))
+  100 CONTINUE                              
+C
+C     CALCULATE CUBIC SPLINE COEFFICIENTS FOR THE BODY RADIUS CONTOUR
+      CALL SPLIN2(JNX,XNOSE,R,CRDIUS)
+C
+C     GENERATE 20 POINTS TO DEFINE THE NOSE
+      IX = 0
+      IF (JNX .LT. 20) THEN
+C
+         XPNT(1)  = 0.
+         XPNT(20) = XNOSE(JNX)
+         RPNT(1)  = 0.
+         RPNT(20) = R(JNX)
+         IX = 20
+         DO 200 I=2,19
+            XPNT(I) = XNOSE(JNX)/20.*I
+            CALL EVAL(JNX,XNOSE,XPNT(I),R,RPNT(I),CRDIUS)
+  200    CONTINUE
+C
+      ELSE
+         DO 250 I=1,JNX
+            XPNT(I) = XNOSE(I)
+            RPNT(I) = R(I)
+            IX = IX+1
+  250    CONTINUE
+C
+      ENDIF
+C
+C     VOLUME CALCULATIONS TO BE USED IN CORRECTION FOR 
+C     ARBITRARY BODY.  CODE IS CALIBRATED TO IMPROVE THE 
+C     RESULTS FOR BODIES WHICH HAVE SHAPES THAT ARE NOT 
+C     CONDUCIVE TO SLENDER BODY THEORY.
+C
+C     CALCULATE VOLUME OF A CONE WITH THE SAME LENGTH AND BASE RADIUS
+      VCONE=PI*R(JNX)**2*LNOSE/3.                                     
+C                     
+C     CALCULATE VOLUME OF A TANGENT OGIVE WITH THE SAME LENGTH
+C     AND BASE RADIUS         
+      R1=(LNOSE**2+R(JNX)**2)/(2.*R(JNX))
+      R2=R1-R(JNX)                                  
+      VTNOGV=PI*LNOSE**3*(R1**2/LNOSE**2*(1.0-R2/LNOSE*
+     1       ASIN(LNOSE/R1))-1./3.)
+C
+C     SET TRANSONIC CALCULATION FLAG TO OFF
+      ICHECK=0.0
+C
+C     SET THE TRANSONIC BOUNDARY MACH NUMBERS
+      MSUP=1.20                         
+C
+      CDMACH=MACH
+      IF (MACH.LT.MSUP) CDMACH=MSUP
+C
+C***  START OF SUPERSONIC CALCULATIONS
+  400 CONTINUE
+C
+C     THIS PORTION OF THE SUBROUTINE CALCULATES THE
+C     SUPERSONIC WAVE DRAG USING THE AREA RULE.
+C
+C     OUTER LOOP FOR MACH NUMBER DEPENDENCE.
+C     IF MACH NUMBER IS GREATER THAN ONE, OBLIQUE AREA 
+C     DISTRIBUTIONS ARE CALCULATED.
+      IF (CDMACH .GT. 1.) THEN
+C                              
+         MA=ASIN(1./CDMACH)         
+         BTA=SQRT(CDMACH**2-1.)
+C
+C        CALCULATE X STATION WHERE THE MACH LINE  
+C        INTERSECTS THE LOWER RADIUS CONTOUR
+         DO 500 I=1,1000
+C     
+C           ADD CYLINDRICAL MIDBODY TO ALLOW THE MACH LINE TO
+C           COMPLETE THE FULL LENGTH OF THE NOSE
+            IF (I .GT. IX) XPNT(I)=XPNT(I-1)+XPNT(IX)/IX
+C
+C           INITIALIZE BISECTION STARTING VALUES
+            XLE=XPNT(1)
+            XR=XPNT(I)
+  600       T=(XLE+XR)/2.                          
+C         
+C           IF MACH LINE INTERSECTION IS AT THE NOSE 
+C           THEN GO TO NEXT PT.
+            IF (T .LT. 0.0001) GOTO 700   
+C
+C           FIND THE RADIUS CORRESPONDING TO THE 
+C           CURRENT X-VALUE (T)
+            IF (T .LT. XPNT(IX)) THEN
+               CALL EVAL(IX,XPNT,T,RPNT,RE,CRDIUS)
+            ELSE
+               RE=R(JNX)
+            ENDIF
+C
+C           CHECK IF R CORRESPONDS TO THE RADIUS AT THE INTERSECTION
+            H=(XPNT(I)-T)*TAN(MA)
+            IF (ABS(H-RE) .LT. 0.0001) GOTO 700                 
+C
+C           CONTINUE WITH BISECTION IF NECESSARY
+            IF (H .LT. RE) THEN
+               XR=T
+            ELSE
+               XLE=T
+            ENDIF
+            GOTO 600  
+C
+C           X STATION WHERE THE MACH LINE INTERSECTS 
+C           THE LOWER RADIUS CONTOUR
+  700       XL(I)=T     
+C
+C           IF X LOWER HAS PASSED THE BODY THEN STOP
+            IF (XL(I) .GT. XPNT(IX)) THEN 
+               IF (ICHECK .EQ. 500) XPNT(I+1)=0.
+               NUM=I
+               GOTO 800 
+            ENDIF
+  500    CONTINUE                                   
+C
+C        CALCULATE X STATION WHERE THE MACH LINE  
+C        INTERSECTS THE UPPER RADIUS CONTOUR
+  800    DO 900 I=1,NUM 
+C
+C           ESTABLISH CENTERBODY
+            XCYL=LNOSE*2.
+C            
+C           INITIALIZE BISECTION STARTING VALUES
+            XLE=XPNT(I)
+            XR=XCYL
+ 1000       T=(XLE+XR)/2. 
+C
+C           ENSURE ADEQUATE CENTERBODY LENGTH
+            IF ((XCYL-T) .LT. 0.01) THEN
+               XCYL=XCYL*2.
+               XR=XCYL
+               GOTO 1000
+            ENDIF                            
+C
+C           FIND THE RADIUS CORRESPONDING TO THE 
+C           CURRENT X-VALUE (T)
+            IF (T .LE. XPNT(IX)) THEN
+               CALL EVAL(IX,XPNT,T,RPNT,RE,CRDIUS)
+            ELSE
+               RE=R(JNX)
+            ENDIF 
+C
+C           CHECK IF R CORRESPONDS TO THE RADIUS AT THE INTERSECTION
+            H=(T-XPNT(I))*TAN(MA)
+            IF (ABS(H-RE) .LT. 0.0001) GO TO 1100
+C
+C           CONTINUE WITH BISECTION 
+            IF (H .LT. RE) THEN                  
+               XLE=T
+            ELSE
+               XR=T
+            ENDIF
+           GOTO 1000
+C                           
+C           X UPPER HAS BEEN FOUND
+ 1100       XU(I)=T          
+  900    CONTINUE  
+C
+C         CALCULATION OF MACH LINE INTERSECTION IS NOT NECESSARY (MACH=1)
+          ELSE
+             NUM=IX
+          ENDIF
+C
+C     CALCULATE AREA OF EACH OBLIQUE PLANE USING SIMPSON'S RULE
+      DO 1200 I=1,NUM
+C
+C        USE FRONTAL PROJECTIONS FOR M > 1
+         IF (CDMACH .GT. 1.) THEN          
+C
+C           INITIALIZE STARTING VALUES
+            ATEMP=XL(I)
+            BTEMP=XU(I)
+            M=10
+            H=(BTEMP-ATEMP)/(2.*M)         
+            XI0=0.
+            XI1=0.
+            XI2=0.                    
+            DO 1300 J=1,2*M-1
+               TEMP=ATEMP+J*H                        
+               IF (TEMP .LE. XPNT(IX)) THEN
+                  CALL EVAL(IX,XPNT,TEMP,RPNT,RTEMP,CRDIUS) 
+               ELSE
+                  RTEMP=R(JNX)
+               ENDIF
+C
+C              CHECK TO ENSURE RDIFF IS POSITIVE
+               RDIFF=BTA**2*RTEMP**2-(TEMP-XPNT(I))**2
+               RDIFF=MAX(RDIFF,0.)              
+               IF (MOD(J,2) .EQ. 0) THEN
+                  XI2=XI2+SQRT(RDIFF)
+               ELSE
+                  XI1=XI1+SQRT(RDIFF)
+               ENDIF
+ 1300       CONTINUE      
+C                        
+C           SUM UP XI'S TO GET AREA(I)
+            AREA(I)=H*(XI0+2.*XI2+4.*XI1)/3.*2./BTA**2  
+C
+C        SUM UP AREAS FOR M=1 CASE
+         ELSE
+            AREA(I)=PI*RPNT(I)**2         
+         ENDIF
+ 1200 CONTINUE 
+C
+C     SPLINE FIT AREA DISTRIBUTION                      
+      CALL SPLIN2(NUM,XPNT,AREA,CAREA)                 
+C
+C     LOOP TO DETERMINE CONSTANTS FOR INTEGRATION
+      XPNT(NUM+1)=0.0
+      DO 1400 J=1,NUM      
+C
+C        DETERMINE PHI AT EACH SUBINTERVAL ENDPOINT
+         PHI2(J)=ACOS(2.*XPNT(J)/XPNT(NUM)-1.)
+         PHI1(J)=ACOS(2.*XPNT(J+1)/XPNT(NUM)-1.)                 
+C
+C        EQUIVALENT X-VALUE AT EACH PHI
+         XPHI2=XPNT(J)
+         XPHI1=XPNT(J+1)
+C
+C        DETERMINE VALUE OF THE FUNCTION AT EACH ENDPOINT
+         F1=AREA(J+1)
+         F2=AREA(J)                         
+C
+C        SLOPE OF FUNCTION AT EACH ENDPOINT
+         K2=CAREA(J)
+         K1=CAREA(J+1)              
+C
+C        CALCULATE COEFFICIENTS OF THE CUBIC
+         A1=6.*XPHI1*XPHI2*(F1-F2)/(XPHI2-XPHI1)**3+
+     1      (K1*(XPHI2**2+2.*XPHI1*XPHI2)+K2*
+     2      (2.*XPHI1*XPHI2+XPHI1**2))/(XPHI2-XPHI1)**2
+         A2=3.*(XPHI2+XPHI1)*(F2-F1)/(XPHI2-XPHI1)**3-
+     1      (K1*(2.*XPHI2+XPHI1)+K2*(XPHI2+2.*XPHI1))/
+     2      (XPHI2-XPHI1)**2
+         A3=2.*(F1-F2)/(XPHI2-XPHI1)**3+(K1+K2)/(XPHI2-XPHI1)**2
+C
+C        GROUP THE CONSTANTS OF INTEGRATION  
+         C1(J)=A1+A2*XPNT(NUM)+3./4.*A3*XPNT(NUM)**2
+         C2(J)=A2*XPNT(NUM)+3./2.*A3*XPNT(NUM)**2
+         C3(J)=3./4.*A3*XPNT(NUM)**2 
+ 1400 CONTINUE
+C
+C     CALCULATE 25 FOURIER COEFFICIENTS USING EXACT SOLUTION
+      ICOUNT=25
+      CD=0.
+      DO 1500 I=1,ICOUNT
+         FOFX=0.
+C
+C        INNER LOOP TO DETERMINE THE VALUE OF THE FUNCTION
+         DO 1600 J=1,NUM-1                      
+C
+C           CALCULATE THE THREE TERMS OF THE INTEGRAL  
+            TERM1=C1(J)*(FIS(I,PHI2(J))-FIS(I,PHI1(J)))
+            IF (I .EQ. 1) THEN
+               TERM2=C2(J)*(FISC1(PHI2(J))-FISC1(PHI1(J)))
+               TERM3=C3(J)*(FISC21(PHI2(J))-FISC21(PHI1(J)))
+            ELSE IF (I .EQ. 2) THEN
+               TERM2=C2(J)*(FISC(I,PHI2(J))-FISC(I,PHI1(J)))
+               TERM3=C3(J)*(FISC22(PHI2(J))-FISC22(PHI1(J))) 
+            ELSE
+               TERM2=C2(J)*(FISC(I,PHI2(J))-FISC(I,PHI1(J)))
+               TERM3=C3(J)*(FISC2(I,PHI2(J))-FISC2(I,PHI1(J)))
+            ENDIF       
+C
+C           SUM THE TERMS 
+            FOFX=FOFX+TERM1+TERM2+TERM3 
+ 1600    CONTINUE
+C
+C        DETERMINE THE FOURIER COEFFICIENTS 
+         ASUBN=FOFX*2./PI
+         CD=CD+I*ASUBN**2
+ 1500 CONTINUE                            
+C
+C     CALCULATE CD TOTAL 
+      CDTOT=CD*PI/(4.*SREF)*FRCOR(FRNOSE,VOLNOS,VCONE,VTNOGV)
+C
+C***  END OF SUPERSONIC CALCULATIONS
+C
+C***  START OF TRANSONIC CALCULATIONS
+      IF (MACH.LT.MSUP) THEN
+        IF (CDMACH.EQ.MSUP) THEN
+C
+C         CALCULATE VALUE AT MACH + 0.10 TO ALLOW FOR
+C         A SLOPE TO BE DETERMINED.
+          F2TRAN=CDTOT            
+          CDTOT=0.
+          ICHECK=500
+C
+C         SINCE THE SLOPE OF THE CURVE AT MACH NUMBER 1.2 IS NEEDED,
+C         THE WAVE DRAG COEFFICIENT MUST BE CALCULATED ONCE MORE.  A 
+C         FINITE DIFFERENCE IS USED BETWEEN MACH NUMBERS 1.2 AND 1.3
+C         TO DETERMINE THE SLOPE, K2.
+          CDMACH=CDMACH+0.10
+          GOTO 400 
+        ENDIF
+C
+C       SLOPE IS DETERMINED FOR USE IN TRANSONIC CALCULATION.
+        K2TRAN=(F2TRAN - CDTOT)/0.1 
+C
+C       THIS PORTION OF THE SUBROUTINE CALCULATES THE
+C       TRANSONIC PRESSURE DRAG.  A CUBIC SPLINE WILL
+C       CONNECT THE SUBSONIC AND SUPERSONIC REGIMES.
+C       THIS WILL ENABLE THE TRANSONIC DRAG RISE TO BE
+C       CALCULATED.
+C
+C       THE VALUE (F1TRAN) AND SLOPE (K1TRAN) OF THE CURVE FIT
+C       IS DETERMINED FOR THE TRANSONIC RANGE.
+        F1TRAN = CDPO/SQRT(1.-MSUB**2)
+        K1TRAN = CDPO*MSUB*(1.-MSUB**2)**(-1.5)
+C                         
+C       CALCULATE COEFFICIENTS OF THE CUBIC
+        A0=(F1TRAN*(MSUP**3-3.*MSUB*MSUP**2)+F2TRAN*(3.*MSUB**2*MSUP-
+     1      MSUB**3))/(MSUP-MSUB)**3-(K1TRAN*MSUB*MSUP**2+K2TRAN*MSUB**
+     2      2*MSUP)/(MSUP-MSUB)**2
+        A1=6.*MSUB*MSUP*(F1TRAN-F2TRAN)/(MSUP-MSUB)**3+
+     1      (K1TRAN*(MSUP**2+2.*MSUB*MSUP)+K2TRAN*
+     2      (2.*MSUB*MSUP+MSUB**2))/(MSUP-MSUB)**2
+        A2=3.*(MSUP+MSUB)*(F2TRAN-F1TRAN)/(MSUP-MSUB)**3-
+     1      (K1TRAN*(2.*MSUP+MSUB)+K2TRAN*(MSUP+2.*MSUB))/
+     2      (MSUP-MSUB)**2
+        A3=2.*(F1TRAN-F2TRAN)/(MSUP-MSUB)**3+(K1TRAN+K2TRAN)/
+     1      (MSUP-MSUB)**2                           
+C                        
+C       TRANSONIC VALUE IS COMPUTED
+        CDTOT = A0 + A1*MACH + A2*MACH**2 + A3*MACH**3
+      ENDIF
+C
+C***  END OF TRANSONIC CALCULATIONS
+C
+      RETURN
+      END

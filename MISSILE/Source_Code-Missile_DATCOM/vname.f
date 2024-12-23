@@ -1,0 +1,60 @@
+      SUBROUTINE VNAME(KOL,L,LEN,NUM,NAMES,NNAM,I,FOUND,ARRAY,
+     1            NDMS,NF,NUMBER,BLANK,EQUAL)
+C
+C***  SUBROUTINE TO CHECK VARIABLE NAME AND SYNTAX
+C
+      DIMENSION KOL(80), LEN(NUM), NAMES(NNAM), NUMBER(15)
+      CHARACTER*4 PARL,PARR,EQUAL,BLANK,KOL,NUMBER,NAMES
+      LOGICAL FOUND, ARRAY, NMTEST, FLAG
+      DATA PARL, PARR /'(   ',')   ' /
+C
+C***  TEST FOR VARIABLE NAME
+C
+      J = 1
+      DO 1010 I=1,NUM
+         IF(.NOT. NMTEST(KOL(L),NAMES(J),LEN(I))) GO TO 1000
+         K = L+LEN(I)
+         FLAG = (KOL(K) .EQ. BLANK) .OR. (KOL(K) .EQ. EQUAL) .OR.
+     1       (KOL(K) .EQ. PARL)
+         IF(FLAG) GO TO 1020
+ 1000    J = J+LEN(I)
+ 1010 CONTINUE
+C
+      FOUND = .FALSE.
+      I = 0
+      GO TO 1090
+C
+C***  DETERMINE IF NAME IS AN ARRAY, CHECK FOR ARRAY ELEMENT
+C***  DESIGNATION, AND CHECK NAME DELIMITERS
+C
+ 1020 CONTINUE
+      FOUND = .TRUE.
+      ARRAY = .FALSE.
+      L = L+LEN(I)
+      NDMS = 0
+      IF(KOL(L) .NE. PARL) GO TO 1090
+        ARRAY = .TRUE.
+        L = L+1
+ 1030   DO 1040 J=1,10
+           IF(L .GE. 79) GO TO 1070
+           IF(KOL(L) .EQ. NUMBER(J)) GO TO 1060
+           IF(KOL(L) .EQ. PARR)      GO TO 1080
+ 1040   CONTINUE
+        NF = NF+1
+ 1050   L = L+1
+        IF(KOL(L) .EQ. EQUAL) GO TO 1090
+        GO TO 1050
+ 1060   NDMS = 10*NDMS+J-1
+        L = L+1
+        GO TO 1030
+ 1070   CONTINUE
+        IF(KOL(L) .NE. PARR) NF = NF+1
+ 1080   CONTINUE
+        L = L+1
+        NDMS = NDMS-1
+        IF(NDMS .GE. 0) GO TO 1090
+        NF = NF+1
+        NDMS = 0
+ 1090 CONTINUE
+      RETURN
+      END

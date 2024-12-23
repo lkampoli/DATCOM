@@ -1,0 +1,137 @@
+      SUBROUTINE SETGEO(KN,M,XB,NBLUNT,X,Y,Z,NPTS,B,RO,XT,YT,ZT,SLL,SLR)
+C
+C  SUBROUTINE TO PREPARE THE INPUT COORDINATES FOR PARABOLIC
+C  INTERPOLATION
+C
+C  INPUTS
+C
+C     KN -- ARRAY OF POINTS DEFINING THE DISCONTINUITIES
+C      M -- TOTAL NUMBER OF BODY SEGMENTS
+C     XB -- FIRST X COORDINATE TO BE INVESTIGATED
+C NBLUNT -- TYPE OF NOSE BLUNTNESS
+C           0=SHARP, 1=BLUNTED, 2=TRUNCATED
+C      X -- ARRAY OF X COORDINATES
+C      Y -- ARRAY OF BODY RADII
+C   NPTS -- TOTAL NUMBER OF BODY POINTS
+C
+C  OUTPUTS
+C
+C      Z -- VALUES USED IN PARABOLIC INTERPOLATION ROUTINE
+C      B -- NOSE BLUNTNESS FACTOR IN CONIC REPRESENTATION
+C     RO -- NOSE BLUNTNESS FACTOR IN CONIC REPRESENTATION
+C     XT -- INTERPOLATED X VALUES FOR SEGMENT
+C     YT -- INTERPOLATED Y VALUES FOR SEGMENT
+C     ZT -- INTERPOLATED Z VALUES FOR SEGMENT
+C    SLL -- LEFT HAND SLOPES OF EACH SEGMENT
+C    SLR -- RIGHT HAND SLOPES FOR EACH SEGMENT
+C
+C  ROUTINES CALLED -- PARAB
+C
+      DIMENSION X(50),Y(50),Z(50),XT(50),YT(50),ZT(50),
+     1 KN(20),NN(20),SLL(20),SLR(20)
+      N=NPTS
+      ND=1
+      KL=0
+      DRB=0.
+      IF(NBLUNT.EQ.1)ND=0
+      NN(1)=1
+      DO 1000 KD=2,19
+         KL=KL+KN(KD-1)
+         IF(KN(KD).EQ.0)GO TO 1000
+         IF(KD.EQ.3 .AND. KN(3).EQ.2)GO TO 1000
+         ND=ND+1
+         NN(ND)=KL
+ 1000 CONTINUE
+      IF(KN(1).EQ.0)DRB=0.
+      B=0.
+      RO=0.
+      NU=KN(1)
+      NL=1
+      IF(KN(1).EQ.0)NU=1
+      IF(KN(1).EQ.0)GO TO 1030
+      IF(KN(1).EQ.2)GO TO 1010
+      GO TO 1020
+ 1010 DRB=(Y(NU)-Y(NL))/(X(NU)-X(NL))
+ 1020 IF(NBLUNT.EQ.0)GO TO 1040
+      IF(X(1).EQ.0.)GO TO 1030
+      X1=X(1)
+      X2=X(2)
+      Y1=Y(1)
+      Y2=Y(2)
+      CALL BLUNTN(X1,Y1,X2,Y2,XB,B,RO,R,RX,RXX,DEL,SD,CD)
+      XB=.003*RO
+      GO TO 1040
+ 1030 SQ=SQRT(1.+DRB*DRB)
+      RO=Y(1)*SQ
+      IF(NBLUNT.EQ.2)GO TO 1035
+      B=-1.
+      GO TO 1040
+ 1035 B=RO
+      RO=0.
+ 1040 DO 1050 I=1,20
+         KN(I)=NN(I)
+ 1050 CONTINUE
+      NS=1
+      MM=ND
+      M=MM+1
+      IF(ND.EQ.0)GO TO 1070
+      IF(NN(1).EQ.1)GO TO 1080
+      DO 1060 J=2,M
+         MJ2=M-J+2
+         MJ1=M-J+1
+         NN(MJ2)=NN(MJ1)
+ 1060 CONTINUE
+ 1070 MM=ND+1
+      M=MM+1
+      NS=0
+      NN(1)=1
+ 1080 NN(M)=N
+      DO 1090 L=1,20
+         KN(L)=NN(L)
+ 1090 CONTINUE
+      DO 1110 J=2,M
+            L=NN(J)
+            NPT=L-NN(J-1)+1
+            DY1=Y(L-1)-Y(L)
+            DX1=X(L-1)-X(L)
+         IF(NPT.EQ.2)GO TO 1100
+            DY2=Y(L-2)-Y(L)
+            DX2=X(L-2)-X(L)
+            DE=1./DX1-1./DX2
+            SLL(J)=(DY1/DX1**2-DY2/DX2**2)/DE
+            GO TO 1110
+ 1100    SLL(J)=DY1/DX1
+ 1110 CONTINUE
+C
+C    COMPUTE RIGHT HAND SLOPES
+C
+      DO 1160 J=1,MM
+            L=NN(J)
+            NPT=NN(J+1)-L+1
+            DY1=Y(L+1)-Y(L)
+            DX1=X(L+1)-X(L)
+         IF(NPT.EQ.2)GO TO 1120
+            DY2=Y(L+2)-Y(L)
+            DX2=X(L+2)-X(L)
+            DE=1./DX1-1./DX2
+            SLR(J)=(DY1/DX1**2-DY2/DX2**2)/DE
+         GO TO 1130
+ 1120    SLR(J)=DY1/DX1
+ 1130    IF(J.EQ.1.AND.NS.EQ.0)SLR(1)=Y(1)/X(1)-RO/Y(1)
+C
+C    COMPUTE PARABOLIC FIT
+C
+         DO 1140 I=1,NPT
+            LI=L+I-1
+            XT(I)=X(LI)
+            YT(I)=Y(LI)
+ 1140    CONTINUE
+         NM=NPT-1
+         CALL PARAB(XT,YT,ZT,NPT,SLR(J),SLL(J+1))
+         DO 1150 I=1,NM
+            LI=I+L-1
+            Z(LI)=ZT(I)
+ 1150    CONTINUE
+ 1160 CONTINUE
+      RETURN
+      END

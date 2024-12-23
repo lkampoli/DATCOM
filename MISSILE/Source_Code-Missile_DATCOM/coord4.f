@@ -1,0 +1,55 @@
+      SUBROUTINE COORD4(X,XU,XL,YUN,YLN,L,I,J,K,II,JJ,KK,III,JJJ,
+     1 THN,CAM,RHO,T)
+C
+C*****
+C***** CALCULATE NACA FOUR DIGIT AIRFOIL COORDINATES
+C*****
+C
+C  ROUTINE ADAPTED FROM DIGITAL DATCOM
+C  ORIGINAL ROUTINE WRITTEN BY D. KINSEY, D. BOWERS, AFFDL
+C  MODIFIED BY S.R. VUKELICH, MCDONNELL DOUGLAS
+C
+      DIMENSION X(50),XU(50),XL(50),YUN(50),YLN(50),THN(50),CAM(50)
+C
+      AI=I
+      AJ=J
+      AK=K
+      AII=II
+      AJJ=JJ
+      AKK=KK
+      ZM=AI*.01
+      ZP=AJ*.1
+      T=AK*.1+AII*.01+AJJ*.001+AKK*.0001
+      RHO=1.1019*T**2
+C
+C ... COMPUTE COORDINATES ALONG CHORD
+C
+      DO 1000 M=1,L
+      YT=5.*T*(.2969*SQRT(X(M))-.126*X(M)-.3516*X(M)**2+.2843*X(M)**3
+     1  -.1015*X(M)**4)
+      IF(X(M).EQ.ZP)YC=ZM
+      IF(X(M).EQ.ZP)ALPHA=0.0
+      IF(X(M).LT.ZP)YC=(2.*ZP*X(M)-X(M)**2)*ZM/ZP**2
+      IF(X(M).LT.ZP)ALPHA=ATAN((2.*ZM/(ZP**2))*(ZP-X(M)))
+      IF(X(M).GT.ZP)YC=(ZM/((1.-ZP)**2))*(1.-2.*ZP+2.*ZP*X(M)-X(M)**2)
+      IF(X(M).GT.ZP)ALPHA=ATAN((2.*ZM/((1.-ZP)**2))*((ZP-X(M))))
+      XU(M)=X(M)-YT*SIN(ALPHA)
+      YUN(M)=YC+YT*COS(ALPHA)
+      XL(M)=X(M)+YT*SIN(ALPHA)
+      YLN(M)=YC-YT*COS(ALPHA)
+      CAM(M)=YC
+      IF(CAM(M) .LT. 1.E-05) CAM(M)=0.0
+      THN(M)=YT
+ 1000 CONTINUE
+      THN(1)=0.0
+      THN(L)=0.0
+      CAM(1)=0.0
+      CAM(L)=0.0
+      XU(L)=1.
+      YUN(L)=0.0
+      XL(L)=1.
+      YLN(L)=0.0
+      XU(1)=0.0
+      YLN(1)=0.0
+      RETURN
+      END

@@ -1,0 +1,58 @@
+      SUBROUTINE ARCCA(L, YP, B, XM, XW, CP, NF, DCA, FAIL)
+C
+C
+C     CALCULATE CP AND D(CA)/DY ARROUND CIRCULAR ARC AIRFOIL
+C
+C     INPUT VARIABLES
+C          L - NUMBER OF POINTS ON NOSE CAP
+C         YP - Y-POSITION ON FIN
+C          B - SPAN OF TWO PANELS ALONE
+C         XM - MACH NUMBER
+C
+C     INPUT VARIABLES FROM COMMON
+C         XO - ROOT LOCATIONS OF SOSL
+C         XT - TIP LOCATIONS OF SOSL
+C
+C     OUTPUT VARIABLES
+C         XW - LOCATIONS OF PRESSURES
+C         CP - PRESSURE COEFFICIENT AT XW
+C         NF - NUMBER OF FINAL POINT ON AIRFOIL
+C        DCA - D(CA)/DY
+C
+      COMMON /CAFD/  XO(60), XT(60), DZDXO(60), DZDXT(60), TGA(60),
+     1               ETA(60), DZDX(60), NS, CPO
+C
+      LOGICAL FAIL
+      DIMENSION XW(60), CP(60)
+C     ...
+C     ... CALCULATE AIRFOIL GEOMETRY
+C     ...
+      AJ  = 2.0*YP/B
+      X11 = XO(L+1)+AJ*(XT(L+1)-XO(L+1))
+      X14 = XO(NS)+AJ*(XT(NS)-XO(NS))
+      N1  = L+2
+      NF  = N1+32
+      DXX = (X14-X11)/32.0
+      DXX = DXX/10.0
+C     ...
+C     ... CALCULATE CP ON CIRCULAR ARC
+C     ...
+      DO 10 I=N1,NF
+        XW(I) = XO(I-1)+AJ*(XT(I-1)-XO(I-1))
+        XP = XW(I)+DXX
+        IF(I .EQ. N1) XP = X11+0.00001
+        IF(I .EQ. NF) XP = X14-0.00001
+        CALL CP3DW(XP, YP, B, XM, CP(I),FAIL)
+        IF(FAIL)GO TO 20
+   10 CONTINUE
+C     ...
+C     ... CALCULATE DCA
+C     ...
+      DX  = (X14-X11)/32.0
+      DCA = 0.0
+      CALL SIMPW(CP, DZDX, DX, N1, NF, DCA)
+C
+   20 CONTINUE
+C
+      RETURN
+      END

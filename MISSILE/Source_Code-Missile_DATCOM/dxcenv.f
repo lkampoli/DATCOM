@@ -1,0 +1,30 @@
+      FUNCTION DXCENV(NPTS,X,R)
+C
+C**  FUNCTION TO COMPUTE THE VOLUME CENTROID
+C
+C***  INPUTS
+C
+C  NPTS -- NUMBER OF INPUT POINTS
+C     X -- X STATIONS
+C     R -- RADII AT EACH X STATION
+C
+C
+      COMMON /CONST/ PI,RAD,UNUSED,KAND
+C
+      DIMENSION X(NPTS),R(NPTS)
+C
+      DXCENV=0.0
+      VOLTOT=0.0
+      DO 1000 I=2,NPTS
+         DX=X(I)-X(I-1)
+         DVOL=PI/3.*DX*(R(I-1)**2+R(I)**2+R(I)*R(I-1))
+         VOLTOT=VOLTOT+DVOL
+         IF(R(I).GE.R(I-1))DXCV=X(I)-DX/4.*(R(I)**2+2.*R(I)*R(I-1)
+     1     +3.*R(I-1)**2)/(R(I)**2+R(I)*R(I-1)+R(I-1)**2)
+         IF(R(I).LT.R(I-1))DXCV=X(I-1)+DX/4.*(R(I-1)**2+2.*R(I)*R(I-1)
+     1     +3.*R(I)**2)/(R(I)**2+R(I)*R(I-1)+R(I-1)**2)
+         DXCENV=DXCENV+DXCV*DVOL
+ 1000 CONTINUE
+      DXCENV=DXCENV/VOLTOT
+      RETURN
+      END

@@ -1,0 +1,27 @@
+      REAL FUNCTION FRCOR(FRNOSE,VOLNOS,VCONE,VTNOGV)
+C     FUNCTION TO DETERMINE CORRECTION FACTOR FOR ARBITRARY BODY
+      FRCOR=0.
+C
+C     CHECK FOR VOLUME DEPENDENCY
+      IF (VOLNOS .GT. VCONE) THEN   
+C
+C        FIND FINENESS RATIO CORRECTION
+         IF (FRNOSE .LT. 1.) THEN
+            COR=0.240
+         ELSE IF (FRNOSE .LT. 1.5) THEN
+            COR=0.24+0.66*(FRNOSE-1.)
+         ELSE IF (FRNOSE .LT. 2.) THEN
+            COR=0.57+0.41*(FRNOSE-1.5)
+         ELSE IF (FRNOSE .LT. 3.) THEN
+            COR=0.775+0.133*(FRNOSE-2.)
+         ELSE IF (FRNOSE .LT. 6.7) THEN
+            COR=0.908+0.024*(FRNOSE-3.)
+         ELSE IF (FRNOSE .GT. 6.7) THEN
+            COR=1.0
+         ENDIF
+      ELSE
+         COR=1.
+      ENDIF
+      FRCOR=1.+(COR-1.)*(VOLNOS-VCONE)/(VTNOGV-VCONE)
+      RETURN
+      END         

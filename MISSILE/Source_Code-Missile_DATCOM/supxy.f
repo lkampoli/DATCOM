@@ -1,0 +1,38 @@
+      SUBROUTINE SUPXY(THN,CAM,X,XU,XL,YU,YL,YUN,YLN,N)
+C
+C****  CALCULATE MEAN LINE AND THICKNESS DISTRIBUTION
+C****  FROM X AND Y COORDINATES FOR SUPERSONIC AIRFOILS
+C
+      DIMENSION THN(50),CAM(50)
+      DIMENSION X(50),XU(50),XL(50),YU(50),YL(50),YUN(50),YLN(50)
+C
+      DO 1000 I=1,N
+      THN(I)=0.5*(YU(I)-YL(I))
+      CAM(I)=0.5*(YU(I)+YL(I))
+ 1000 CONTINUE
+ 1010 THN(1)=0.0
+      CAM(1)=0.0
+      CAM(N)=0.0
+      IN=0
+C
+C ... COMPUTE COORDINATES ALONG CHORD
+C
+      DO 1020 I=1,N
+      IF(I .NE. N)DYDX=(CAM(I+1)-CAM(I))/(X(I+1)-X(I))
+      IF(I .EQ. N)DYDX=(CAM(I-1)-CAM(I))/(X(I-1)-X(I))
+      THETA=ATAN(DYDX)
+      SA=SIN(THETA)
+      CA=COS(THETA)
+      XU(I)=X(I)-THN(I)*SA
+      XL(I)=X(I)+THN(I)*SA
+      YUN(I)=CAM(I)+THN(I)*CA
+      YLN(I)=CAM(I)-THN(I)*CA
+ 1020 CONTINUE
+      XU(1)=0.0
+      XL(1)=0.0
+      XU(N)=1.0
+      XL(N)=1.0
+      YUN(1)=0.0
+      YLN(1)=0.0
+      RETURN
+      END

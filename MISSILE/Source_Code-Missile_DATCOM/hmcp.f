@@ -1,0 +1,159 @@
+      SUBROUTINE HMCP(NSET,FMI,CNI,XCPDH,XCP) 
+C***********************************************************************
+C
+C  THIS ROUTINE ESTIMATES THE FIN CHORDWISE CENTER OF PRESSURE 
+C
+C   DESCRIPTION OF DATA BASE: 
+C
+C     1.  FIN DESIGNATIONS AND GEOMETRIES
+C
+C                  AR\TR \  0.0  \  0.5  \  1.0  \
+C                 --------------------------------
+C                   0.25 \   I       12      II
+C                   0.50 \   31      32      33
+C                   1.00 \  III      42      IV
+C                   2.00 \   51      52      53
+C                   4.00 \   V       62      VI
+C
+C            NUMBERS INDICATE FIN DESIGNATIONS AND THE ROMAN
+C            NUMERALS INDICATE REGIONS OF INTERPOLATION.
+C
+C     2.  MACH NUMBER, ANGLE OF ATTACK AND FIN ORIENTATION ANGLE RANGES
+C
+C            MACH  = 0.6,0.8,0.9,1.2,1.5,2.0,2.5,3.0,3.5,4.5
+C            ALPHA = 0,2,5,10,15,20,25,30*,35,40,45
+C
+C            * MAXIMUM ALPHA FOR: 
+C                1) MACH LESS THAN 0.8
+C                2) MACH LESS THAN 1.2 IF AR < 1.0
+C
+C  INPUT VARIABLES:
+C    NSET    -  FIN SET INDEX
+C     FMI    -  FREESTREAM MACH NUMBER
+C     CNI    -  FIN NORMAL FORCE COEFFICIENT
+C   XCPDH    -  CENTER OF PRESSURE FROM DATCOM HANDBOOK METHOD,
+C               USED IF T.E. SWEEP IS NOT EQUAL TO ZERO
+C               MEASURED IN CALIBERS FROM C.G. 
+C
+C  OTHER REQUIRED VARIABLES:
+C     AR     -  ASPECT RATIO OF WING ALONE
+C     TR     -  FIN TAPER RATIO
+C     SP     -  FIN PLANFORM AREA
+C  TESWP     -  FIN TRAILING EDGE SWEEP
+C    CNF     -  FIN NORMAL FORCE COEFFICIENT REF. TO WING AREA
+C
+C  CALCULATED:  
+C     XCPS   -  FIN CHORDWISE CENTER-OF-PRESSURE LOCATION 
+C               MEASURED AFT OF THE LEADING EDGE APEX AND
+C               GIVEN AS A FRACTION OF THE ROOT CHORD 
+C  OUTPUT:
+C     XCP    -  FIN CHORDWISE CENTER-OF-PRESSURE LOCATION MEASURED FROM
+C               ORIGIN OF MISSILE COORDINATE SYSTEM
+C
+C  SUBPROGRAMS USED:  XBAR
+C
+C  WRITTEN BY  NIELSEN ENGINEERING AND RESEARCH, 8-89 
+C              (415) 968-9457 
+C
+C  REV 3/99 TRI-SERVICE DATA BASE METHOD FOR FIN C.P.
+C
+C***********************************************************************
+      COMMON /REFQN/  SREF,LREF,LATREF,ROUGH,XCG,ZCG,SCALE,BLAYER,RHR
+      COMMON /ABODIN/ BDIN(881)
+      COMMON /FSET1/  FDATA1(399)
+      COMMON /FSET2/  FDATA2(399)
+      COMMON /FSET3/  FDATA3(399)
+      COMMON /FSET4/  FDATA4(399)
+      COMMON /GEOFS1/  GFIN1(188)
+      COMMON /GEOFS2/  GFIN2(188)
+      COMMON /GEOFS3/  GFIN3(188)
+      COMMON /GEOFS4/  GFIN4(188)
+C
+      DIMENSION AXY(11),FMACH(10),XS(11,10)
+      REAL XSN(2),LREF
+C
+      DATA AXY/0.,0.2,0.4,0.6,0.8,1.0,1.2,1.4,1.6,1.8,2.0/
+      DATA FMACH/.6,.8,.9,1.2,1.5,2.,2.5,3.,3.5,4.5/
+C
+C  COMPUTE FIN GEOMETRY PARAMETERS
+C 
+      IF(NSET.EQ.1) THEN
+         AR=2.*GFIN1(171)
+         TR=   GFIN1(172)
+         CR=  FDATA1(52)
+         XLE= FDATA1(102)
+         TESWP=GFIN1(183)
+         SP=   GFIN1(174)
+      ELSEIF(NSET.EQ.2) THEN
+         AR=2.*GFIN2(171)
+         TR=   GFIN2(172)
+         CR=  FDATA2(52)
+         XLE= FDATA2(102)
+         TESWP=GFIN2(183)
+         SP=   GFIN2(174)
+      ELSEIF(NSET.EQ.3) THEN
+         AR=2.*GFIN3(171)
+         TR=   GFIN3(172)
+         CR=  FDATA3(52)
+         XLE= FDATA3(102)
+         TESWP=GFIN3(183)
+         SP=   GFIN3(174)
+      ELSEIF(NSET.EQ.4) THEN
+         AR=2.*GFIN4(171)
+         TR=   GFIN4(172)
+         CR=  FDATA4(52)
+         XLE= FDATA4(102)
+         TESWP=GFIN4(183)
+         SP=   GFIN4(174)
+      ENDIF
+      XO=BDIN(2)
+      CNF=CNI*SREF/(2.*SP)
+C
+C  SKIP CALCULATIONS IF TRAILING EDGE NOT UNSWEPT
+C
+      IF(ABS(TESWP).GT.1.) XCP=XCPDH*LREF+XCG
+      IF(ABS(TESWP).GT.1.) GO TO 500
+C
+C DETERMINE MACH NUMBER RANGE OF STABILITY DATA
+C
+      FM=FMI
+      IF(FM.LT.0.4) FM=0.4
+      IM2=10
+      DO 110 I=2,10
+        IF (FM.LE.FMACH(I)) THEN
+          IM2=I
+          GOTO 10
+        ENDIF
+  110 CONTINUE
+   10 IM1=IM2-1
+      AM = (FM-FMACH(IM1))/(FMACH(IM2)-FMACH(IM1))
+C
+C DETERMINE FIN NORMAL FORCE RANGE OF STABILITY DATA
+C
+      JN2=11
+      DO 120 J=2,11
+        IF (CNF.LE.AXY(J)) THEN
+          JN2=J
+          GOTO 20
+        ENDIF
+  120 CONTINUE
+   20 JN1=JN2-1
+      AN = (CNF-AXY(JN1))/(AXY(JN2)-AXY(JN1))
+C
+C CALCULATE STABILITY XCP 
+C
+      K=0
+      DO 210 I=IM1,IM2
+        K=K+1
+        DO 220 J=JN1,JN2
+          XS(J,I) =XBAR(AXY(J),FMACH(I),AR,TR)
+  220   CONTINUE
+        XSN(K)  = XS(JN1,I) + AN*(XS(JN2,I)-XS(JN1,I))
+  210 CONTINUE
+      XCPS = XSN(1) + AM*(XSN(2)-XSN(1))
+C
+      XCP=XLE+XCPS*CR+XO
+  500 CONTINUE
+C
+      RETURN
+      END

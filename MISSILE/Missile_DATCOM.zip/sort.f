@@ -1,0 +1,31 @@
+      SUBROUTINE SORT(N,X,IORDER)
+C
+C***  SORT FIRST N ELEMENTS OF ARRAY X IN ASCENDING ORDER
+C***  IORDER IS THE SORTING ORDER
+C
+      DIMENSION X(N),IORDER(N)
+C
+      IF(N .LE. 1)GO TO 1030
+C
+      DO 1000 I=1,N
+         IORDER(I)=I
+ 1000 CONTINUE
+C
+      NM1=N-1
+      DO 1020 IP=1,NM1
+         NMIP=N-IP
+         DO 1010 I=1,NMIP
+            IF(X(I) .LE. X(I+1))GO TO 1010
+            TEMP=X(I+1)
+            X(I+1)=X(I)
+            X(I)=TEMP
+            ITEMP=IORDER(I+1)
+            IORDER(I+1)=IORDER(I)
+            IORDER(I)=ITEMP
+ 1010    CONTINUE
+ 1020 CONTINUE
+C
+ 1030 CONTINUE
+C
+      RETURN
+      END

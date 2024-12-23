@@ -1,0 +1,819 @@
+      SUBROUTINE SYNTHS(IM,TOTC,IFLAGA,DFLAG)
+C      
+C***  AERODYNAMIC CONFIGURATION SYNTHESIS
+C      
+      COMMON /SBODY/  BCN(20),BCM(20),BCA(20),BCY(20),BCSN(20),BCSL(20)
+     1                ,BCNA(20),BCMA(20),SBDUM(60)
+      COMMON /SB1/    CN1(20),CM1(20),CA1(20),CY1(20),CSN1(20),
+     1                CSL1(20),CNA1(20),CMA1(20),CYB1(20),CLNB1(20),
+     2                CLLB1(20)
+      COMMON /SB12/   CN12(20),CM12(20),CA12(20),CY12(20),CSN12(20),
+     1                CSL12(20),CNA12(20),CMA12(20),CYB12(20),
+     2                CLNB12(20),CLLB12(20)
+      COMMON /SB123/  CN13(20),CM13(20),CA13(20),CY13(20),CSN13(20),
+     1                CSL13(20),CNA13(20),CMA13(20),CYB13(20),
+     2                CLNB13(20),CLLB13(20)
+      COMMON /SB1234/ CN14(20),CM14(20),CA14(20),CY14(20),CSN14(20),
+     1                CSL14(20),CNA14(20),CMA14(20),CYB14(20),
+     2                CLNB14(20),CLLB14(20)
+      COMMON /CONST/ PI,RAD,UNUSED,KAND
+      COMMON /FLC/    FL(144)
+      COMMON /REFQN/  REF(9)
+      COMMON /ABODIN/ BDIN(881)
+      COMMON /GEOBOD/ GEOB(47)
+      COMMON /BDWORK/ BDWK(241)
+      COMMON /FSET1/  FDATA1(399)
+      COMMON /FSET2/  FDATA2(399)
+      COMMON /FSET3/  FDATA3(399)
+      COMMON /FSET4/  FDATA4(399)
+      COMMON /GEOFS1/ GFIN1(188)
+      COMMON /GEOFS2/ GFIN2(188)
+      COMMON /GEOFS3/ GFIN3(188)
+      COMMON /GEOFS4/ GFIN4(188)
+      COMMON /F1WORK/ F1WK(290)
+      COMMON /F2WORK/ F2WK(290)
+      COMMON /F3WORK/ F3WK(290)
+      COMMON /F4WORK/ F4WK(290)
+      COMMON /INCID/  DEL1(8),DEL2(8),DEL3(8),DEL4(8),XHINGE(4),
+     1                SKEW(4)
+      COMMON /PARTF/  PARTS(19)
+      COMMON /CASEID/ DUMEE(175),ICASE,NOEXTR,NOLAT,IR,IPAGE
+      COMMON /LOGIC/  LDMPCS,LDAMP,LBUILD,LNACA,LDERDG,
+     1                LDERRD,LPART,LNAME,LPLOT,
+     2                LFLT,LREFQ,LAXIS,LFIN1,LFIN2,LFIN3,LFIN4,
+     3                LDEFL,LTRIM,LDIMIN,LDIMFT,LDIMCM,LDIMM,LELLB,
+     4                LINLET,LEXPR,LICRMT,LSPIN,LARBOD
+      COMMON /PAERO/  AKBW(4),AKWB0(4),AKKBW(4),AKKWB(4),XCPBW(4),
+     1                XCPWB(4),DAQ(8,20,4),WAQ(8,20,4),
+     2                CNW(8,20,4),CLW(8,20,4),CNWB(20,4),CMWB(20,4),
+     3                CAWB(20,4),CYWB(20,4),CSNWB(20,4),CSLWB(20,4),
+     4                CNBW(20,4),CMBW(20,4),CABW(20,4),CYBW(20,4),
+     5                CSNBW(20,4),CSLBW(20,4),CN(20,4),CM(20,4),
+     6                CA(20,4),CY(20,4),CSN(20,4),CSL(20,4)
+      COMMON /INC  /  COREC(128),ZIP,ALP1(20),NAP
+      COMMON /FFINDL/ DSYN1(8),DSYN2(8),DSYN3(8),DSYN4(8),CLD(4)
+      COMMON /THERY/  LSOSE,PRESUR,LHYBRD,LHYPER
+C
+      REAL NAP
+      LOGICAL PARTS,LDMPCS,LDAMP,LBUILD,LNACA,LDERDG,LDERRD,
+     1        LPART,LNAME,LPLOT,LFLT,LREFQ,LAXIS,LFIN1,LFIN2,LFIN3,
+     2        LFIN4,LDEFL,LTRIM,LDIMIN,LDIMFT,LDIMCM,LDIMM,LELLB,
+     3        LINLET,LEXPR,LICRMT
+      LOGICAL LFINL,LSOSE,PRESUR,LHYBRD,LHYPER
+C      
+      DIMENSION IFLAGA(3,4),IFOUND(6),FACTH(4),FACTV(4),AFACT(20,4)
+C      
+      REAL NX,MACH,LES,LODB,LODN,LATREF,LBODY
+C      
+      DIMENSION TOTC(80),FINAX(20,4),XB(50),RB(50),LES(4),LFINL(4),
+     1          TES(4),SPAN(4),SSPAN(4),XLE(4),CR(4),NFINS(4),
+     2          TAPER(4),AR(4),RADF(4),PHISET(4),AREAF(4),
+     3          GAM(8,4),DELTA(8,4),CNF(20,4),AT(20,4),NT(4),PHIF(8,4),
+     4          CLA(4),DUMMY(120),ALO(4),CMOT(4)
+      DIMENSION AKWB(4),XCPWA(4),XCPWD(4),CNA(20,4),CMA(20,4)
+      DIMENSION IROUT(2),YCPFIN(20,4)
+C      
+      EQUIVALENCE (DSYN1,DELTA(1,1)),(DSYN2,DELTA(1,2)),
+     1            (DSYN3,DELTA(1,3)),(DSYN4,DELTA(1,4))
+      EQUIVALENCE (SREF,REF(1)),(DREF,REF(2)),(LATREF,REF(3)),
+     1            (XCG,REF(5)),(ZCG,REF(6))
+      EQUIVALENCE (NX,BDIN(1)),(XB(1),BDIN(3)),(RB(1),BDIN(53))
+C      
+C***   
+C***  ENTRY POINT/TRACEBACK
+C***   
+C***   
+C***  VALID CONFIGURATION?
+C***   
+      IF(.NOT. (LAXIS .OR. LELLB))GO TO 1470
+      IF(.NOT. (LFIN1.OR.LFIN2.OR.LFIN3.OR.LFIN4))GO TO 1470
+C      
+C***  SET VALUES FOR ARRAY IFLAGA TO ZERO
+C     THIS ARRAY IS USED TO DETERMINE WHICH LATERAL COEFFICIENTS
+C     THERE ARE EXPERIMENTAL INPUTS FOR
+C      
+      DO 1010 JZ1=1,4
+         DO 1000 IZ1=1,3
+            IFLAGA(IZ1,JZ1)=0
+ 1000    CONTINUE
+ 1010 CONTINUE
+      DO 1020 K=1,4
+         DO 1025 I=1,20
+            CN(I,K)=UNUSED
+            CM(I,K)=UNUSED
+            CA(I,K)=UNUSED
+            CY(I,K)=UNUSED
+            CSN(I,K)=UNUSED
+            CSL(I,K)=UNUSED
+            CNA(I,K)=UNUSED
+            CMA(I,K)=UNUSED
+ 1025    CONTINUE
+ 1020 CONTINUE
+C***   
+C***  THE FOLLOWING CONSTANTS ARE FIXED BY THE DIMENSION STATEMENTS
+C***  IN THIS ROUTINE.  THEY CANNOT BE ARBITRARILY CHANGED.
+C***   
+      LFINL(1)=LFIN1
+      LFINL(2)=LFIN2
+      LFINL(3)=LFIN3
+      LFINL(4)=LFIN4
+C      
+      IF(LFIN1)MAXSET=1
+      IF(LFIN1 .AND. LFIN2)MAXSET=2
+      IF(LFIN1 .AND. LFIN2 .AND. LFIN3)MAXSET=3
+      IF(LFIN1 .AND. LFIN2 .AND. LFIN3 .AND. LFIN4)MAXSET=4
+C      
+      MAXPAN=8
+C      
+      MAXALP=20
+C***   
+C***  SET UP DATA FOR ALL POSSIBLE CONFIGURATIONS
+C***   
+      LBODY=GEOB(35)
+      RADN=BDIN(105)/2.
+      WNOSE=BDIN(105)
+      HNOSE=BDIN(234)*WNOSE
+      IF(LELLB)RADN=SQRT(WNOSE*HNOSE)/2.
+      BLUNT=BDIN(106)/RADN
+      LODN=GEOB(6)
+      LODB=GEOB(30)
+      PHIB=FL(23)
+      IF(ABS(PHIB) .LE. UNUSED)PHIB=0.
+C      
+      NALPHA=FL(1)+.5
+      MACH=FL(IM+24)
+      RENN=FL(IM+64)
+C      
+      LES(1)=GFIN1(179)
+      LES(2)=GFIN2(179)
+      LES(3)=GFIN3(179)
+      LES(4)=GFIN4(179)
+C      
+      TES(1)=GFIN1(183)
+      TES(2)=GFIN2(183)
+      TES(3)=GFIN3(183)
+      TES(4)=GFIN4(183)
+C      
+      NFINS(1)=FDATA1(112)+0.5
+      NFINS(2)=FDATA2(112)+0.5
+      NFINS(3)=FDATA3(112)+0.5
+      NFINS(4)=FDATA4(112)+0.5
+C      
+      SPAN(1)=2.*GFIN1(173)
+      SPAN(2)=2.*GFIN2(173)
+      SPAN(3)=2.*GFIN3(173)
+      SPAN(4)=2.*GFIN4(173)
+C      
+      XLE(1)=FDATA1(102)
+      XLE(2)=FDATA2(102)
+      XLE(3)=FDATA3(102)
+      XLE(4)=FDATA4(102)
+C      
+      TAPER(1)=GFIN1(172)
+      TAPER(2)=GFIN2(172)
+      TAPER(3)=GFIN3(172)
+      TAPER(4)=GFIN4(172)
+C      
+      CR(1)=FDATA1(52)
+      CR(2)=FDATA2(52)
+      CR(3)=FDATA3(52)
+      CR(4)=FDATA4(52)
+C      
+      AREAF(1)=2.*GFIN1(174)
+      AREAF(2)=2.*GFIN2(174)
+      AREAF(3)=2.*GFIN3(174)
+      AREAF(4)=2.*GFIN4(174)
+C      
+      AR(1)=2.*GFIN1(171)
+      AR(2)=2.*GFIN2(171)
+      AR(3)=2.*GFIN3(171)
+      AR(4)=2.*GFIN4(171)
+C      
+      PHISET(1)=FDATA1(363)
+      PHISET(2)=FDATA2(363)
+      PHISET(3)=FDATA3(363)
+      PHISET(4)=FDATA4(363)
+C      
+      IF(PHISET(1) .EQ. UNUSED)PHISET(1)=0.
+      IF(PHISET(2) .EQ. UNUSED)PHISET(2)=0.
+      IF(PHISET(3) .EQ. UNUSED)PHISET(3)=0.
+      IF(PHISET(4) .EQ. UNUSED)PHISET(4)=0.
+C      
+      DO 1030 I=1,MAXPAN
+         GAM(I,1)=FDATA1(I+373)
+         GAM(I,2)=FDATA2(I+373)
+         GAM(I,3)=FDATA3(I+373)
+         GAM(I,4)=FDATA4(I+373)
+         PHIF(I,1)=FDATA1(I+381)
+         PHIF(I,2)=FDATA2(I+381)
+         PHIF(I,3)=FDATA3(I+381)
+         PHIF(I,4)=FDATA4(I+381)
+ 1030 CONTINUE
+C      
+C***  CHECK FOR USER DEFINED FIN POSITIONS AND PHI ANGLES
+C      
+      DO 1090 I=1,MAXSET
+         MAXP=NFINS(I)
+         IF(MAXP .EQ. 0)MAXP=1
+         DO 1040 J=1,MAXP
+            IF(GAM(J,I) .EQ. UNUSED)GO TO 1040
+            GO TO 1060
+ 1040    CONTINUE
+         DO 1050 J=1,MAXP
+            GAM(J,I)=0.
+ 1050    CONTINUE
+ 1060    DO 1070 J=1,MAXP
+            IF(PHIF(J,I) .EQ. UNUSED)GO TO 1070
+            GO TO 1090
+ 1070    CONTINUE
+         DELGAM=360./FLOAT(MAXP)
+         DO 1080 J=1,MAXP
+            PHIF(J,I)=FLOAT(J-1)*DELGAM
+ 1080    CONTINUE
+ 1090 CONTINUE
+C      
+      DO 1100 I=1,MAXPAN
+         PHIF(I,1)=PHIF(I,1)+PHISET(1)
+         PHIF(I,2)=PHIF(I,2)+PHISET(2)
+         PHIF(I,3)=PHIF(I,3)+PHISET(3)
+         PHIF(I,4)=PHIF(I,4)+PHISET(4)
+ 1100 CONTINUE
+C      
+      NT(1)=20
+      NT(2)=20
+      NT(3)=20
+      NT(4)=20
+C      
+C***  ASSIGN VALUES TO ALPHA, CN AND CA FOR EACH SET OF FINS
+C      
+      DO 1110 K=1,20
+C      
+C     FIN SET 1
+C      
+         AT(K,1)=F1WK(K+227)
+         CNF(K,1)=2.*F1WK(K+247)
+         FINAX(K,1)=F1WK(K+207)+F1WK(207)
+         ALO(1)=F1WK(269)
+C      
+C     FIN SET 2
+C      
+         AT(K,2)=F2WK(K+227)
+         CNF(K,2)=2.*F2WK(K+247)
+         FINAX(K,2)=F2WK(K+207)+F2WK(207)
+         ALO(2)=F2WK(269)
+C      
+C     FIN SET 3
+C      
+         AT(K,3)=F3WK(K+227)
+         CNF(K,3)=2.*F3WK(K+247)
+         FINAX(K,3)=F3WK(K+207)+F3WK(207)
+         ALO(3)=F3WK(269)
+C      
+C     FIN SET 4
+C      
+         AT(K,4)=F4WK(K+227)
+         CNF(K,4)=2.*F4WK(K+247)
+         FINAX(K,4)=F4WK(K+207)+F4WK(207)
+         ALO(4)=F4WK(269)
+ 1110 CONTINUE
+C      
+      DO 1130 I=1,MAXSET
+         DO 1120 J=1,MAXPAN
+            IF(ABS(PHIF(J,I)) .LE. UNUSED)PHIF(J,I)=0.
+            IF(PHIF(J,I) .GE. 360.)PHIF(J,I)=PHIF(J,I)-360.
+            IF(PHIF(J,I) .LE.-360.)PHIF(J,I)=PHIF(J,I)+360.
+ 1120    CONTINUE
+         IF(ABS(SKEW(I)) .LE. UNUSED)SKEW(I)=0.
+         IF(XHINGE(I).EQ.UNUSED)XHINGE(I)=BDIN(2)+XLE(I)+CR(I)/2.
+         SSPAN(I)=SPAN(I)/2.
+ 1130 CONTINUE
+C      
+      NNX=NX+0.5
+C      
+      DO 1140 K=1,MAXSET
+         CALL LNTRP(BDIN(3),BDIN(53),NNX,XHINGE(K),RADF(K))
+ 1140 CONTINUE
+C***   
+C***  COMPUTE CORRECTION TO PANEL NORMAL FORCE FOR BODY ELLIPTICITY
+C***   
+         DO 1150 KB=1,4
+            FACTH(KB)=1.
+            FACTV(KB)=1.
+ 1150    CONTINUE
+         IF(.NOT. LELLB)GO TO 1170
+         DO 1160 K=1,MAXSET
+            CALL LNTRP(BDIN(3),BDIN(53),NNX,XHINGE(K),AWIDTH)
+            CALL LNTRP(BDIN(3),BDIN(184),NNX,XHINGE(K),AHEIGH)
+            AMAJX=2.*AHEIGH
+            AMINX=2.*AWIDTH
+            IF(AWIDTH .GT. AHEIGH)AMAJX=2.*AWIDTH
+            IF(AWIDTH .GT. AHEIGH)AMINX=2.*AHEIGH
+            RADF(K)=SQRT(AMAJX*AMINX)/2.
+
+C
+C***        DETERMINE CORRECTION FACTOR FOR FIN ON AN ELLIPSE.
+C           FACTH IS THE CORRECTION FOR A PANEL IN THE HORZONTAL (90 DEG.)
+C           POSITION.
+C           FACTV IS THE CORRECTION FOR A PANEL IN THE VERTICAL POSTION.
+C           CALLING ELLKWB DETERMINES THE CORRECTION FOR A PANEL AT 90
+C           DEGREES FROM TOP VERTICAL CENTER FOR AN ELLIPSE WHOSE ORIENTATION
+C           IS GIVEN BY BPHI. THE ELLIPSE IS IN THE HORIZONTAL POSITION WHEN 
+C           BPHI=0.
+C
+            IF(AWIDTH .GE. AHEIGH)BPHI=90.
+            IF(AWIDTH .LT. AHEIGH)BPHI=0.
+            CALL ELLKWB(SPAN(K),TAN(LES(K)/RAD),TAN(TES(K)/RAD),CR(K),
+     1         TAPER(K),AMAJX,AMINX,BPHI,2.*RADF(K),FACTV(K))
+            IF(AWIDTH .GE. AHEIGH)BPHI=0.
+            IF(AWIDTH .LT. AHEIGH)BPHI=90.
+            CALL ELLKWB(SPAN(K),TAN(LES(K)/RAD),TAN(TES(K)/RAD),CR(K),
+     1         TAPER(K),AMAJX,AMINX,BPHI,2.*RADF(K),FACTH(K))
+ 1160    CONTINUE
+ 1170 CONTINUE
+C***   
+C***  INITIALIZE DEFLECTION ANGLES IF NOT INPUT
+C***   
+      DO 1190 K=1,MAXSET
+         DO 1180 I=1,MAXPAN
+            IF(ABS(DELTA(I,K)) .EQ. UNUSED)DELTA(I,K)=0.
+ 1180    CONTINUE
+ 1190 CONTINUE
+C***   
+C***  CARRYOVER INTERFERENCE AND CENTER OF PRESSURE
+C***   
+      DO 1200 K=1,MAXSET
+C      
+C***  ACORR EQUALS THE ZERO LIFT ANGLE OF ATTACK FOR THE KTH FIN SET - A
+C      
+         ACORR=ALO(K)
+         CALL SPLINE(AT(1,K),CNF(1,K),NT(K),2,2,0.,0.,ACORR,1,XX,CLA(K))
+         CLA(K)=CLA(K)*RAD*SREF/AREAF(K)
+         DX=LBODY-XLE(K)-CR(K)
+         CALL CARRYO(MACH,RADF(K),SSPAN(K),LES(K),TES(K),CR(K),TAPER(K),
+     1      AR(K),CLA(K),DX,AKWB(K),AKBW(K),AKKWB(K),AKKBW(K),XCPBW(K),
+     2      XCPWB(K))
+         IF(LHYPER) AKWB(K)=1.0
+         IF(LHYPER) AKBW(K)=0.0
+C      
+C ...    REFERENCE TO CG
+C      
+         XCPWB(K)=(XCPWB(K)*CR(K)+XLE(K)+BDIN(2)-XCG)/DREF
+         XCPBW(K)=(XCPBW(K)*CR(K)+XLE(K)+BDIN(2)-XCG)/DREF
+C      
+C ...    PANEL ALONE XCP SAME AS IN PRESENCE OF BODY
+C      
+         XCPWA(K)=XCPWB(K)
+C      
+C ...    INCIDENCE XCP SAME AS IN PRESENCE OF BODY
+C      
+         XCPWD(K)=XCPWB(K)
+ 1200 CONTINUE
+C      
+C ... SAVE NON-CORRECTED INTERFERENCE FACTOR FOR REFERENCE
+C      
+      DO 1210 K=1,MAXSET
+          AKWB0(K)=AKWB(K)
+ 1210 CONTINUE
+C***   
+C***  CLEAR WORKING ARRAYS
+C***   
+      DO 1240 K=1,MAXSET
+         DO 1230 I=1,MAXALP
+            DO 1220 II=1,MAXPAN
+               DAQ(II,I,K)=0.
+               WAQ(II,I,K)=0.
+ 1220       CONTINUE
+ 1230    CONTINUE
+ 1240 CONTINUE
+C***   
+C***  LOOP FROM FRONT TO BACK ON THE CONFIGURATION
+C***   
+      DO 1420 K=1,MAXSET
+         ICONF=K+5
+         IF(.NOT. LFINL(K))GO TO 1420
+         NFK=NFINS(K)
+C      
+C***COMPUTE THE CMO FOR EACH FIN SET FROM THE PANEL ALONE CMO'S
+C      
+            CMOT(K)=0.
+         DO 1290 J=1,NFK
+C      
+C    COMPUTE THE ROLL ANGLE OF THE JTH PANEL IN THE FIN SET
+C      
+            PHI=PHIB+PHIF(J,K)+GAM(J,K)
+C      
+C    COMPUTE THE CMO OF THE JTH PANEL CORRECTED FOR PHI
+C      CORRECTED IN VERSION 4/91A TO ACCOUNT FOR 2-D TO 3-D
+C      EFFECTS AND REFERENCE QUANTITIES 
+C  
+            IF (K .NE. 1) GO TO 1250
+C      
+            CMCO4=F1WK(43+IM)*GFIN1(171)*(COS(GFIN1(180)/RAD))**2/
+     1            (GFIN1(171)+2*COS(GFIN1(180)/RAD))
+            CMO=CMCO4*ABS(SIN(PHI/RAD))*GFIN1(174)*GFIN1(184)/SREF/DREF
+            GO TO 1280
+C      
+ 1250 CONTINUE
+C    
+            IF (K .NE. 2) GO TO 1260
+C      
+            CMCO4=F2WK(43+IM)*GFIN2(171)*(COS(GFIN2(180)/RAD))**2/
+     1            (GFIN2(171)+2*COS(GFIN2(180)/RAD))
+            CMO=CMCO4*ABS(SIN(PHI/RAD))*GFIN2(174)*GFIN2(184)/SREF/DREF
+            GO TO 1280
+C      
+ 1260 CONTINUE
+C      
+            IF (K .NE. 3) GO TO 1270
+C      
+            CMCO4=F3WK(43+IM)*GFIN3(171)*(COS(GFIN3(180)/RAD))**2/
+     1            (GFIN3(171)+2*COS(GFIN3(180)/RAD))
+            CMO=CMCO4*ABS(SIN(PHI/RAD))*GFIN3(174)*GFIN3(184)/SREF/DREF
+            GO TO 1280
+C      
+ 1270 CONTINUE
+C      
+            CMCO4=F4WK(43+IM)*GFIN4(171)*(COS(GFIN4(180)/RAD))**2/
+     1            (GFIN4(171)+2*COS(GFIN4(180)/RAD))
+            CMO=CMCO4*ABS(SIN(PHI/RAD))*GFIN4(174)*GFIN4(184)/SREF/DREF
+C      
+ 1280 CONTINUE
+C      
+C*** ADD THE JTH PANEL'S CMO TO THE KTH FINSET TOTAL
+C      
+            CMOT(K)=CMOT(K)+CMO
+C      
+ 1290 CONTINUE
+C      
+C***   
+C***     ANGLE OF ATTACK LOOP
+C***   
+         DO 1370 I=1,NALPHA
+            AA=TOTC(I+60)
+            PHIB=TOTC(I+40)
+            IF(ABS(PHIB) .LE. UNUSED)PHIB=0.
+            CDC=BDWK(I+141)
+C***   
+C***        PANEL IN PRESENCE OF BODY CHARACTERISTICS
+C***   
+C ...       K-F(B) VARIATION WITH ANGLE OF ATTACK
+C      
+C  TEST ROUTINES FOR NEW KWB METHOD
+C
+C           CALL KWBALP(AA,RADF(K),SSPAN(K),FACTOR)
+            CALL KWBNEW(MACH,AA,RADF(K),SSPAN(K),AKWB0(K),FACTOR)
+            IF(LHYPER) FACTOR=1.0
+            AFACT(I,K)=FACTOR
+c           DO 1300 II=1,MAXSET
+c              AKWB(II)=AKWB0(II)*FACTOR
+c1300       CONTINUE
+            AKWB(K)=AKWB0(K)*FACTOR
+            KSET=K
+            CALL PANLCN(AA,MACH,CDC,PHIB,PHIF(1,K),GAM(1,K),ALO(K),
+     1         NT(K),AT(1,K),CNF(1,K),XLE(K),SPAN(K)+2.0*RADF(K),AR(K),
+     2         TAPER(K),CR(K),LODN,RADN,RADF(K),DREF,DELTA(1,K),NFK,
+     3         DAQ(1,I,K),AKWB(K),AKKWB(K),BLUNT,LES(K),
+     4         AREAF(K)/2.,YCPF,CNW(1,I,K),CNWING,CYWING,CLW(1,I,K),
+     5         CLWING,WAQ(1,I,K),FACTH(K),FACTV(K),KSET,DFLAG)
+            YCPFIN(I,K)=YCPF
+C***   
+C***        BODY/FIN INCREMENTALS
+C***   
+C ...       DO ONLY FOR BODY+FIN 1
+C      
+            IF(K .GT. 1)GO TO 1320
+C      
+            CNWB(I,K)=CNWING
+            CNBW(I,K)=CNWING*AKBW(K)/AKWB(K)
+            CMWB(I,K)=-CNWING*XCPWA(K)+CMOT(K)
+            CMBW(I,K)=-CNBW(I,K)*XCPBW(K)
+            CYWB(I,K)=CYWING
+            CYBW(I,K)=CYWING*AKBW(K)/AKWB(K)
+            CSNWB(I,K)=-CYWING*XCPWA(K)
+            CSNBW(I,K)=-CYBW(I,K)*XCPBW(K)
+            CSLWB(I,K)=CLWING
+            CSLBW(I,K)=0.
+C      
+C ...       BODY-WING CONFIGURATION
+C      
+            CN(I,K)=BCN(I)+CNWB(I,K)+CNBW(I,K)
+            CM(I,K)=BCM(I)+CMWB(I,K)+CMBW(I,K)
+            CY(I,K)=BCY(I)+CYWB(I,K)+CYBW(I,K)
+            CSN(I,K)=BCSN(I)*LATREF/DREF+CSNWB(I,K)+CSNBW(I,K)
+            CSL(I,K)=BCSL(I)*LATREF/DREF+CSLWB(I,K)+CSLBW(I,K)
+C
+C ...       AXIAL FORCE COEFFICIENT
+C      
+            WINGCA=0.
+            DO 1310 IW=1,NFK
+               IF(ABS(ALO(K)) .LE. UNUSED) THEN
+                  CALL POLINT(FL(2),FINAX(1,K),NALPHA,ABS(WAQ(IW,I,K)),
+     1                       CAWALP,CAA)
+               ELSE
+                  AEQ = WAQ(IW,I,K)+ALO(K)
+                  IF(PHIF(IW,K) .GT. 180 .OR. PHIF(IW,K) .LT. 0.0)
+     1               AEQ = -WAQ(IW,I,K)+ALO(K)
+                  CALL POLINT(FL(2),FINAX(1,K),NALPHA,AEQ,
+     1                       CAWALP,CAA)
+               ENDIF
+               CAWDEL = CAWALP*COS(DELTA(IW,K)/RAD)+
+     1                  CNW(IW,I,K)*SIN(DELTA(IW,K)/RAD)
+               WINGCA=WINGCA+CAWDEL
+ 1310       CONTINUE
+            CAWB(I,K)=WINGCA
+            CABW(I,K)=0.
+            CA(I,K)=BCA(I)+CAWB(I,K)+CABW(I,K)
+C***   
+C***        NEXT FIN IN-LINE AERODYNAMICS
+C***   
+C ...       SKIP IF ON FIRST FIN SET
+C      
+ 1320       IF(K .EQ. 1)GO TO 1370
+C      
+C ...       ON NEXT IN-LINE FIN SETS (2 THROUGH 4)
+C ...       LOOP FOR INTERFERENCE DUE TO FORWARD FIN VORTICES
+C      
+            KM1=K-1
+            NFKK=NFINS(K)
+C      
+C ...       LOOP ON ALL FIN SETS, FROM THE FRONT OF THE VEHICLE
+C      
+            DO 1350 ISET=1,KM1
+               NFI=NFINS(ISET)
+C
+C   REV 3/99 CHANGE TO ALLOW MULTIPLE FIN SETS AT SAME LOCATION.
+C   PREVENTS VORTEX INTERFERENCE CALCULATIONS
+C
+               IF((XLE(ISET)+CR(ISET)) .GE. XLE(K)) GO TO 1345
+C      
+C ...          LOOP ON ALL PANELS IN THIS SET
+C      
+               DO 1340 IW=1,NFI
+                  PHIW=PHIB+PHIF(IW,ISET)
+                  IF(PHIW .GT. 360.)PHIW=PHIW-360.0
+                  IF(PHIW .LT.-360.)PHIW=PHIW+360.0
+                  DELWW=DELTA(IW,ISET)
+                  IF(PHIW .GE. 180. .OR. PHIW .LT. 0.)DELWW=-DELWW
+                  SK=SKEW(ISET)
+                  CALL DIHED(PHIW,DIHW)
+C      
+C ...             TRACK VORTEX FROM THIS PANEL TO NEXT IN-LINE FIN SET
+C      
+                  CALL SFWRW(MACH,AR(ISET),TAPER(ISET),LES(ISET),
+     1               TES(ISET),FWRW)
+                  CALL SVTRAK(AA,DELWW,SK,DIHW,TES(ISET),(XLE(ISET)+
+     1               CR(ISET)),XHINGE(ISET)-BDIN(2),(XCPWA(K)*DREF+
+     2               XCG-BDIN(2)),FWRW*SSPAN(ISET),RADF(ISET),HRW,VRW)
+C      
+C ...             CORRECT VORTEX POSITION DUE TO DIHEDRAL OF FIN
+C      
+                  GAMW=GAM(IW,ISET)
+                  IF(PHIW .GT. 180. .AND. PHIW .LT. 360.)GAMW=-GAMW
+                  TOTANW=DIHW-GAMW
+                  IF(ABS(GAMW) .GT. UNUSED)
+     1               HRW=HRW+SSPAN(ISET)*FWRW*(COS(TOTANW/RAD)-
+     2                  COS(DIHW/RAD))
+                  IF(ABS(GAMW) .GT. UNUSED)
+     1               VRW=VRW-SSPAN(ISET)*FWRW*(SIN(TOTANW/RAD)-
+     2                  SIN(DIHW/RAD))
+C      
+C ...             COMPUTE STRENGTH OF VORTEX FROM THIS FIN
+C      
+                  TAUW=2.0*CNW(IW,I,ISET)*SREF/(8.0*PI*SSPAN(K)*
+     1               SSPAN(ISET)*FWRW)*RAD
+                  IF(PHIW .GE. 180. .AND. PHIW .LT. 360.)HRW=-HRW
+                  IF(HRW .LT. 0.)TAUW=-TAUW
+C      
+C ...             LOOP THROUGH ALL TAIL SURFACES
+C      
+                  DO 1330 IT=1,NFKK
+                     PHIT=PHIB+PHIF(IT,K)
+                     IF(PHIT .GT. 360.)PHIT=PHIT-360.0
+                     IF(PHIT .LT.-360.)PHIT=PHIT+360.0
+C      
+C ...                VORTEX EFFECTS ON AFT SURFACES
+C ...                FIRST CORRECT FOR AFT PANEL DIHEDRAL
+C      
+                     HRT=HRW
+                     VRT=VRW
+                     CALL DIHED(PHIT,DIHT)
+                     GAMT=GAM(IT,K)
+                     IF(PHIT .GT. 180. .AND. PHIT .LT. 360.)GAMT=-GAMT
+                     TOTANT=DIHT-GAMT
+                     IF(ABS(GAMT).GT.UNUSED .AND. HRW.GT.0.)
+     1                  HRT=HRW-SSPAN(K)*FWRW*(COS(TOTANT/RAD)-
+     2                     COS(DIHT/RAD))
+                     IF(ABS(GAMT).GT.UNUSED .AND. HRW.LT.0.)
+     1                  HRT=HRW+SSPAN(K)*FWRW*(COS(TOTANT/RAD)-
+     2                     COS(DIHT/RAD))
+                     IF(ABS(GAMT) .GT. UNUSED)
+     1                  VRT=VRW+SSPAN(K)*FWRW*(SIN(TOTANT/RAD)-
+     2                     SIN(DIHT/RAD))
+                     CALL VRINTS(HRT,VRT,PHIT,RADF(K),TAPER(K),
+     1                  SSPAN(ISET),VRINT)
+C      
+C ...                SUM VORTEX INFLUENCE WITH OTHER VORTICES
+C      
+                     DAQ(IT,I,K)=DAQ(IT,I,K)+TAUW*VRINT
+ 1330             CONTINUE
+ 1340          CONTINUE
+ 1345          CONTINUE
+ 1350       CONTINUE
+C***   
+C***        NOW COMPUTE AFT FIN PANEL LOADS DUE TO VORTICES
+C***   
+            KSET=K
+            CALL PANLCN(AA,MACH,CDC,PHIB,PHIF(1,K),GAM(1,K),ALO(K),
+     1         NT(K),AT(1,K),CNF(1,K),XLE(K),SPAN(K)+2.0*RADF(K),
+     2         AR(K),TAPER(K),CR(K),LODN,RADN,RADF(K),DREF,
+     3         DELTA(1,K),NFKK,DAQ(1,I,K),AKWB(K),AKKWB(K),BLUNT,
+     4         LES(K),AREAF(K)/2.,YCPF,CNW(1,I,K),CNWING,CYWING,
+     5         CLW(1,I,K),CLWING,WAQ(1,I,K),FACTH(K),FACTV(K),KSET,
+     6         DFLAG)
+            YCPFIN(I,K)=YCPF
+C      
+C ...       TAIL IN PRESENCE OF THE BODY
+C      
+            CNWB(I,K)=CNWING
+            CNBW(I,K)=CNWING*AKBW(K)/AKWB(K)
+            CMWB(I,K)=-CNWING*XCPWA(K)+CMOT(K)
+            CMBW(I,K)=-CNBW(I,K)*XCPBW(K)
+            CYWB(I,K)=CYWING
+            CYBW(I,K)=CYWING*AKBW(K)/AKWB(K)
+            CSNWB(I,K)=-CYWING*XCPWA(K)
+            CSNBW(I,K)=-CYBW(I,K)*XCPBW(K)
+            CSLWB(I,K)=CLWING
+            CSLBW(I,K)=0.
+C      
+C ...       TOTAL CONFIGURATION DATA
+C      
+            CN(I,K)=CN(I,KM1)+CNWB(I,K)+CNBW(I,K)
+            CM(I,K)=CM(I,KM1)+CMWB(I,K)+CMBW(I,K)
+            CY(I,K)=CY(I,KM1)+CYWB(I,K)+CYBW(I,K)
+            CSN(I,K)=CSN(I,KM1)+CSNWB(I,K)+CSNBW(I,K)
+            CSL(I,K)=CSL(I,KM1)+CSLWB(I,K)+CSLBW(I,K)
+C
+C ...       AXIAL FORCE COEFFICIENT
+C      
+            TAILCA=0.
+            DO 1360 IT=1,NFKK
+               IF((ALO(K)) .LE. UNUSED) THEN
+                  CALL POLINT(FL(2),FINAX(1,K),NALPHA,ABS(WAQ(IT,I,K)),
+     1                       CAWALP,CAA)
+               ELSE
+                  AEQ = WAQ(IT,I,K)+ALO(K)
+                  IF(PHIF(IT,K) .GT. 180 .OR. PHIF(IT,K) .LT. 0.0)
+     1               AEQ = -WAQ(IT,I,K)+ALO(K)
+                  CALL POLINT(FL(2),FINAX(1,K),NALPHA,AEQ,
+     1                       CAWALP,CAA)
+               ENDIF
+               CAWDEL = CAWALP*COS(DELTA(IT,K)/RAD)+
+     1                  CNW(IT,I,K)*SIN(DELTA(IT,K)/RAD)
+               TAILCA=TAILCA+CAWDEL
+ 1360       CONTINUE
+            CAWB(I,K)=TAILCA
+            CABW(I,K)=0.
+            CA(I,K)=CA(I,KM1)+CAWB(I,K)+CABW(I,K)
+ 1370    CONTINUE
+         DO 1380 JK=1,120
+            DUMMY(JK)=UNUSED
+ 1380    CONTINUE
+C      
+C      CHECK TO SEE IF CONFIGURATION INCREMENTING IS TO BE USED
+C      
+         IF(.NOT. LICRMT)GO TO 1390
+C      
+C      CHECK TO SEE IF FULL CONFIGURATION IS CURRENTLY BEING SYNTHESISED
+C      IF LOOP IS ON FULL CONFIGURATION DO INCREMENTING
+C      IF NOT CONTINUE CONFIGURATION SYNTHESIS
+C      
+         IF( K .NE. MAXSET)GO TO 1420
+C      
+C      IF THIS IS THE INITIAL CASE CALL SUBROUTINE SUBEXP TO GET
+C         EXPERIMENTAL DATA
+C      
+         IF(ICASE .EQ. 1 .AND. ZIP .EQ. 0.)
+     1      CALL SUBEXP(IFOUND,MACH,ICONF,DUMMY)
+C      
+C      CALL SUBROUTINES TO PERFORM CONFIGURATION INCREMENTING IF
+C         EXPERIMENTAL DATA HAS BEEN INPUT FOR THAT COEFFICIENT
+C      
+         IF( DUMMY(1)  .NE. UNUSED .OR. COREC(2) .NE. UNUSED)
+     1     CALL CNINC(ICASE,CN,K+1,DUMMY,PHIB)
+         IF( DUMMY(21) .NE. UNUSED .OR. COREC(24) .NE. UNUSED)
+     1     CALL CMINC(ICASE,CM,K+1,DUMMY,PHIB)
+         IF( DUMMY(41) .NE. UNUSED .OR. COREC(45) .NE. UNUSED)
+     1     CALL CAINC(ICASE,CA,K+1,DUMMY)
+         IF( DUMMY(61) .NE. UNUSED .OR. COREC(66) .NE. UNUSED)
+     1     CALL CYINC(ICASE,CY,CN,K+1,DUMMY,PHIB)
+         IF( DUMMY(81) .NE. UNUSED .OR. COREC(88) .NE. UNUSED)
+     1     CALL CSNINC(ICASE,CSN,CM,K+1,DUMMY,PHIB)
+         IF(DUMMY(101) .NE. UNUSED .OR. COREC(109).NE. UNUSED)
+     1     CALL CSLINC(ICASE,CSL,K+1,DUMMY)
+         ZIP=1.
+         GO TO 1400
+ 1390    CALL SUBEXP(IFOUND,MACH,ICONF,DUMMY)
+C      
+C      IF A COEFFICIENT HAS EXPERIMENTAL INPUT OR HAS BEEN INCREMENTED
+C         UPDATE THE APPROPRIATE ARRAY
+C      
+ 1400    CONTINUE
+         DO 1410 I=1,NALPHA
+            IF(DUMMY(I    ) .NE. UNUSED)CN (I,K)=DUMMY(I    )
+            IF(DUMMY(I+20 ) .NE. UNUSED)CM (I,K)=DUMMY(I+20 )
+            IF(DUMMY(I+40 ) .NE. UNUSED)CA (I,K)=DUMMY(I+40 )
+            IF(DUMMY(I+60 ) .NE. UNUSED)CY (I,K)=DUMMY(I+60 )
+            IF(DUMMY(I+80 ) .NE. UNUSED)CSN(I,K)=DUMMY(I+80 )
+            IF(DUMMY(I+100) .NE. UNUSED)CSL(I,K)=DUMMY(I+100)
+ 1410    CONTINUE
+C      
+C***     THIS SETS FLAGS FOR CALL TO SUBROUTINE BLKLDD
+C        TO DETERMINE WHICH LATERAL DIRECTIONAL COEFFICIENTS
+C        HAVE EXPERIMENTAL INPUTS FOR WHICH CONFIGURATION
+C      
+         IF ( DUMMY(61) .NE. UNUSED) IFLAGA(1,ICONF-5) = 1
+         IF ( DUMMY(81) .NE. UNUSED) IFLAGA(2,ICONF-5) = 1
+         IF ( DUMMY(101).NE. UNUSED) IFLAGA(3,ICONF-5) = 1
+ 1420 CONTINUE
+C      
+C***  CHANGE ZCG FOR BODY ALONE AND BODY PLUS FINS
+C   
+      IF(ABS(ZCG) .LE. UNUSED)GO TO 1440
+         DO 1430 I=1,NALPHA
+            CALL ADDZCG(ZCG,DREF,BCA(I),BCM(I))
+            CALL ADDZCG(ZCG,LATREF,BCY(I),BCSL(I))
+            DO 1435 K=1,MAXSET
+               CALL ADDZCG(ZCG,DREF,CA(I,K),CM(I,K))
+               CALL ADDZCG(ZCG,LATREF,CY(I,K),CSL(I,K))
+ 1435       CONTINUE
+ 1430    CONTINUE
+ 1440 CONTINUE
+C***   
+C***  DIFFERENTIATE CN AND CM AND CHANGE LAT-DIR REFERENCE LENGTH
+C***   
+      DO 1450 K=1,MAXSET
+      DO 1455 I=1,NALPHA
+         CALL POLINT(FL(2),CN(1,K),NALPHA,FL(I+1),CNI,CNA(I,K))
+         CALL POLINT(FL(2),CM(1,K),NALPHA,FL(I+1),CMI,CMA(I,K))
+         CSNWB(I,K)=CSNWB(I,K)*DREF/LATREF
+         CSNBW(I,K)=CSNBW(I,K)*DREF/LATREF
+         CSN(I,K)=CSN(I,K)*DREF/LATREF
+         CSLWB(I,K)=CSLWB(I,K)*DREF/LATREF
+         CSLBW(I,K)=CSLBW(I,K)*DREF/LATREF
+         CSL(I,K)=CSL(I,K)*DREF/LATREF
+ 1455    CONTINUE
+ 1450 CONTINUE
+C***   
+C***  SAVE CALCULATED DATA IN APPROPIATE COMMON BLOCKS
+C***   
+      DO 1460 I=1,20
+         CN1  (I)=CN (I,1)
+         CN12 (I)=CN (I,2)
+         CN13 (I)=CN (I,3)
+         CN14 (I)=CN (I,4)
+         CM1  (I)=CM (I,1)
+         CM12 (I)=CM (I,2)
+         CM13 (I)=CM (I,3)
+         CM14 (I)=CM (I,4)
+         CA1  (I)=CA (I,1)
+         CA12 (I)=CA (I,2)
+         CA13 (I)=CA (I,3)
+         CA14 (I)=CA (I,4)
+         CY1  (I)=CY (I,1)
+         CY12 (I)=CY (I,2)
+         CY13 (I)=CY (I,3)
+         CY14 (I)=CY (I,4)
+         CSN1 (I)=CSN(I,1)
+         CSN12(I)=CSN(I,2)
+         CSN13(I)=CSN(I,3)
+         CSN14(I)=CSN(I,4)
+         CSL1 (I)=CSL(I,1)
+         CSL12(I)=CSL(I,2)
+         CSL13(I)=CSL(I,3)
+         CSL14(I)=CSL(I,4)
+         CNA1 (I)=CNA(I,1)
+         CNA12(I)=CNA(I,2)
+         CNA13(I)=CNA(I,3)
+         CNA14(I)=CNA(I,4)
+         CMA1 (I)=CMA(I,1)
+         CMA12(I)=CMA(I,2)
+         CMA13(I)=CMA(I,3)
+         CMA14(I)=CMA(I,4)
+ 1460 CONTINUE
+C***   
+C***  PRINT PARTIAL OUTPUT IF REQUESTED
+C***   
+      IF(PARTS(11))CALL SYNPAR(IM,NALPHA,FL(2),MAXSET,NFINS,XCPWA,
+     1   YCPFIN,AFACT)
+C***   
+C***  PRINT HINGE AND/OR BENDING MOMENT RESULTS
+C***   
+      IF(PARTS(13) .OR. PARTS(14))
+     1  CALL HINGEM(IM,MAXSET,NFINS,RADF,DELTA,DREF,XCG,XHINGE,
+     2  SKEW,SSPAN,YCPFIN,XCPWA)
+C***   
+C***  EXIT
+C***   
+ 1470 CONTINUE
+      RETURN
+      END

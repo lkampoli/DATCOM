@@ -1,0 +1,121 @@
+      SUBROUTINE PRFLC9(IM,NDUM,NMF,NAF)
+C
+C***  FORTRAN 90 VERSION
+C***  SUBROUTINE TO PRINT FLIGHT CONDITIONS HEADER
+C
+      COMMON /REFQN/  SREF,LREF,LATREF,ROUGH,XCG,ZCG,SCALE,BLAYER,RHR
+      COMMON /CONST/  PI,RAD,UNUSED,KAND
+      COMMON /FLC/    NALPHA,ALPHA(20),BETA,PHI,NMACH,MACH(20),
+     1                ALT(20),REN(20),VINF(20),TINF(20),PINF(20)
+C
+      REAL NALPHA,NMACH,MACH,LREF,LATREF
+C
+      COMMON /LOGIC/ LDMPCS,LDAMP,LBUILD,LNACA,LDERDG,
+     1               LDERRD,LPART,LNAME,LPLOT,
+     2               LFLT,LREFQ,LAXIS,LFIN1,LFIN2,LFIN3,LFIN4,
+     3               LDEFL,LTRIM,LDIMIN,LDIMFT,LDIMCM,LDIMM,LELLB,
+     4               LINLET,LEXPR,LICRMT,LSPIN,LARBOD
+      LOGICAL        LDMPCS,LDAMP,LBUILD,LNACA,LDERDG,
+     1               LDERRD,LPART,LNAME,LPLOT,
+     2               LFLT,LREFQ,LAXIS,LFIN1,LFIN2,LFIN3,LFIN4,
+     3               LDEFL,LTRIM,LDIMIN,LDIMFT,LDIMCM,LDIMM,LELLB,
+     4               LINLET,LEXPR,LICRMT,LSPIN,LARBOD
+C
+C
+      CALL CVRTFT
+C
+      IF(IM .LE. 0)IM=1
+      IF(IM .GT. 20)IM=20
+C
+C  REPLACE STATIC PRESSURE WITH DYNAMIC PRESSURE IN 1995 REVISION
+C
+      DP=PINF(IM)
+      IF(PINF(IM).NE.-UNUSED) DP=0.5*1.4*PINF(IM)*(MACH(IM))**2
+      WRITE(6,900)
+  900 FORMAT(4X,'   ******* FLIGHT CONDITIONS AND REFERENCE',
+     1      ' QUANTITIES *******')
+C
+C  ENGLISH UNITS - FEET
+C
+      IF(LDIMFT) THEN
+         WRITE(6,1000) MACH(IM),REN(IM)
+         IF(ALT(IM).NE.UNUSED) WRITE(6,1010) ALT(IM),DP
+         WRITE(6,1020) BETA,PHI
+         WRITE(6,1030) SREF,XCG
+         WRITE(6,1040) LREF,LATREF
+ 1000 FORMAT(4X,' MACH NO  = ',F10.2,'                REYNOLDS NO = ',
+     1      1PE9.3,' /FT')
+ 1010 FORMAT(4X,' ALTITUDE = ',F10.1,' FT        DYNAMIC PRESSURE = ',
+     1        F9.2,' LB/FT**2')
+ 1020 FORMAT(4X,' SIDESLIP = ',F10.2,' DEG                   ROLL = ',
+     1        F9.2,' DEG     ')
+ 1030 FORMAT(4X,' REF AREA = ',F10.3,' FT**2        MOMENT CENTER = ',
+     1        F9.3,' FT') 
+ 1040 FORMAT(4X,' REF LENGTH = ',F8.2,' FT          LAT REF LENGTH = ',
+     1        F9.2,' FT'/) 
+      ENDIF
+C
+C  ENGLISH UNITS - INCHES
+C
+      IF(LDIMIN) THEN
+         WRITE(6,1100) MACH(IM),REN(IM)
+         IF(ALT(IM).NE.UNUSED) WRITE(6,1110) ALT(IM),DP
+         WRITE(6,1120) BETA,PHI
+         WRITE(6,1130) SREF,XCG
+         WRITE(6,1140) LREF,LATREF
+ 1100 FORMAT(4X,' MACH NO  = ',F10.2,'                REYNOLDS NO = ',
+     1      1PE9.3,' /FT')
+ 1110 FORMAT(4X,' ALTITUDE = ',F10.1,' FT        DYNAMIC PRESSURE = ',
+     1        F9.2,' LB/FT**2')
+ 1120 FORMAT(4X,' SIDESLIP = ',F10.2,' DEG                   ROLL = ',
+     1        F9.2,' DEG     ')
+ 1130 FORMAT(4X,' REF AREA = ',F10.3,' IN**2        MOMENT CENTER = ',
+     1        F9.3,' IN') 
+ 1140 FORMAT(4X,' REF LENGTH = ',F8.2,' IN          LAT REF LENGTH = ',
+     1        F9.2,' IN'/) 
+      ENDIF
+C
+C  METRIC UNITS - METERS
+C
+      IF(LDIMM) THEN
+         WRITE(6,1200) MACH(IM),REN(IM)
+         IF(ALT(IM).NE.UNUSED) WRITE(6,1210) ALT(IM),DP
+         WRITE(6,1220) BETA,PHI
+         WRITE(6,1230) SREF,XCG
+         WRITE(6,1240) LREF,LATREF
+ 1200 FORMAT(4X,' MACH NO  = ',F10.2,'                REYNOLDS NO = ',
+     1      1PE9.3,' /M')
+ 1210 FORMAT(4X,' ALTITUDE = ',F10.1,' M         DYNAMIC PRESSURE = ',
+     1        F9.2,' N/M**2')
+ 1220 FORMAT(4X,' SIDESLIP = ',F10.2,' DEG                   ROLL = ',
+     1        F9.2,' DEG     ')
+ 1230 FORMAT(4X,' REF AREA = ',F10.3,' M**2         MOMENT CENTER = ',
+     1        F9.3,' M') 
+ 1240 FORMAT(4X,' REF LENGTH = ',F8.2,' M           LAT REF LENGTH = ',
+     1        F9.2,' M'/) 
+      ENDIF
+C
+C  METRIC UNITS - CENTIMETERS
+C
+      IF(LDIMCM) THEN
+         WRITE(6,1300) MACH(IM),REN(IM)
+         IF(ALT(IM).NE.UNUSED) WRITE(6,1310) ALT(IM),DP
+         WRITE(6,1320) BETA,PHI
+         WRITE(6,1330) SREF,XCG
+         WRITE(6,1340) LREF,LATREF
+ 1300 FORMAT(4X,' MACH NO  = ',F10.2,'                REYNOLDS NO = ',
+     1      1PE9.3,' /M')
+ 1310 FORMAT(4X,' ALTITUDE = ',F10.1,' M         DYNAMIC PRESSURE = ',
+     1        F9.2,' N/M**2')
+ 1320 FORMAT(4X,' SIDESLIP = ',F10.2,' DEG                   ROLL = ',
+     1        F9.2,' DEG     ')
+ 1330 FORMAT(4X,' REF AREA = ',F10.3,' CM**2        MOMENT CENTER = ',
+     1        F9.3,' CM') 
+ 1340 FORMAT(4X,' REF LENGTH = ',F8.2,' CM          LAT REF LENGTH = ',
+     1        F9.2,' CM'/) 
+      ENDIF
+C
+      CALL CVRTUS
+C
+      RETURN
+      END

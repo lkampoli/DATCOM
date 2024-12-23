@@ -1,0 +1,67 @@
+      SUBROUTINE DDECOD(A,N,NUM1,NUM2)
+C
+C***  DECODE CONTROL CARD WRITE
+C***  TO WRITE SELECTED PROGRAM ARRAYS TO TAPE UNIT 3
+C
+C***  INPUT
+C
+C    A -- COLUMNS 7-80 OF THE WRITE CONTROL CARD
+C
+C***  OUTPUTS
+C
+C    N -- NUMBER OF CHARACTERS IN BLOCK NAME
+C NUM1 -- FIRST ARRAY ELEMENT TO BE DUMPED
+C NUM2 -- LAST ARRAY ELEMENT TO BE DUMPED
+C
+      CHARACTER*4 A,AJ,COMMA,BLANK
+      DIMENSION A(74),AJ(10),NN(2)
+C
+      DATA AJ/'0   ','1   ','2   ','3   ','4   ','5   ','6   ',
+     1        '7   ','8   ','9   '/
+      DATA COMMA/',   '/
+      DATA BLANK/'    '/
+C
+      LOOP=1
+      MM=0
+      NN(1)=0
+      NN(2)=0
+C
+      DO 1000 I=1,10
+         II=I
+         IF(A(II).EQ.COMMA) GO TO 1010
+         IF(A(II).EQ.BLANK) GO TO 1010
+ 1000 CONTINUE
+C
+ 1010 N=II-1
+C
+ 1020 DO 1070 J=1,74
+C
+        IF(LOOP .GT. 2)GO TO 1080
+C
+        II=II+1
+        IF(MM.EQ.1.AND.A(II).EQ.BLANK) GO TO 1030
+        GO TO 1040
+C
+ 1030   LOOP=LOOP+1
+        MM=0
+C
+ 1040   IF(A(II).EQ.COMMA.AND.MM.EQ.1) LOOP=LOOP+1
+C
+        DO 1060 K=1,10
+           IF(A(II).EQ.AJ(K)) GO TO 1050
+           GO TO 1060
+C
+ 1050      NN(LOOP)=NN(LOOP)*10+(K-1)
+           MM=1
+        GO TO 1070
+C
+ 1060   CONTINUE
+C
+ 1070 CONTINUE
+C
+ 1080 NUM1=NN(1)
+      NUM2=NN(2)
+      IF(NN(2).EQ.0) NUM2=NN(1)
+C
+      RETURN
+      END

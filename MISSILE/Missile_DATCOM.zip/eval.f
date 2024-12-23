@@ -1,0 +1,51 @@
+      SUBROUTINE EVAL(NUM,X,XVAL,Y,YVAL,C)
+      PARAMETER (NMAX=100)
+      DIMENSION C(NMAX),X(NMAX),Y(NMAX)
+C
+C     THIS SUBROUTINE EVALUATES THE VALUE OF F AND F' AT ARBITRARY
+C     VALUES OF ETA GIVEN THE SPLINE COEFFICIENTS
+C
+C  WRITTEN BY A. JENN, MCDONNELL DOUGLAS
+C
+C     FIND THE INDEX WHERE XVAL FALLS IN THE DATA
+      IL = 1
+      IH= NUM
+      DO 10 J=1,50
+         I = (IL + IH) / 2
+         IF (XVAL .GE. X(I)) THEN
+            IL = I
+         ELSE
+            IH = I
+         END IF            
+         IF ((IH - IL) .EQ. 1) THEN
+            I = IH
+            GOTO 20
+         END IF
+   10 CONTINUE
+C
+C     EVALUATE THE VALUES OF F
+   20 CONTINUE
+C
+         XI=X(I)
+         XIM1=X(I-1)
+         YI=Y(I)
+         YIM1=Y(I-1)
+C
+C ***    C(I) SELECTED BASED UPON THE SEGMENT WE ARE IN
+C
+         CI=C(I)
+         CIM1=C(I-1)
+C
+         DXI=XI-XIM1
+         T=(XVAL-XIM1)/DXI
+         TBAR=1.-T
+         DYI=YI-YIM1
+         DI=DYI/DXI
+C
+C ***  YVAL IS THE Y VALUE FROM THE SPLINE
+       YVAL=T*YI+TBAR*YIM1+DXI*((CIM1-DI)*TBAR**2*T-(CI-DI)*T**2*TBAR)
+C
+ 1010 CONTINUE
+C
+      RETURN
+      END
